@@ -1,7 +1,7 @@
 ﻿using DisCatSharp;
 using DisCatSharp.EventArgs;
 
-namespace Que_Poro_CS;
+namespace Que_Poro_CS.Handlers;
 
 public class GuildHandler
 {

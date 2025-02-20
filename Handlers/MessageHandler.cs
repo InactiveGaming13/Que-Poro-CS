@@ -1,9 +1,8 @@
-﻿using System.Net.NetworkInformation;
-using DisCatSharp;
+﻿using DisCatSharp;
 using DisCatSharp.Entities;
 using DisCatSharp.EventArgs;
 
-namespace Que_Poro_CS;
+namespace Que_Poro_CS.Handlers;
 
 public static class MessageHandler
 {
@@ -39,13 +38,14 @@ public static class MessageHandler
         }
     }
 
-    public static async Task MessageDeleted(DiscordClient s, MessageDeleteEventArgs e)
+    public static Task MessageDeleted(DiscordClient s, MessageDeleteEventArgs e)
     {
         Console.WriteLine($"Deleted message in Guild: {e.Guild.Name} in Channel: {e.Channel.Name}");
+        return Task.CompletedTask;
     }
 
-    public static async Task AddReaction(MessageCreateEventArgs e, DiscordEmoji emoji)
+    public static async Task AddMessageReaction(MessageCreateEventArgs e, DiscordEmoji emoji)
     {
-        e.Message.CreateReactionAsync(emoji);
+        await e.Message.CreateReactionAsync(emoji);
     }
 }
