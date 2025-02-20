@@ -23,6 +23,7 @@
       <PackageReference Include="DisCatSharp.Common" Version="10.7.0-nightly-002" />
       <PackageReference Include="DisCatSharp.Interactivity" Version="10.7.0-nightly-002" />
       <PackageReference Include="DisCatSharp.VoiceNext" Version="10.7.0-nightly-002" />
+      <PackageReference Include="DisCatSharp.VoiceNext.Natives" Version="10.7.0-nightly-002" />
       <PackageReference Include="dotenv.net" Version="3.2.1" />
     </ItemGroup>
 
