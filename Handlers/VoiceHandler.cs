@@ -8,8 +8,25 @@ using DisCatSharp.EventArgs;
 using DisCatSharp.Lavalink;
 using DisCatSharp.Lavalink.Entities;
 using DisCatSharp.Lavalink.Enums;
+using DisCatSharp.Net;
 
 namespace Que_Poro_CS.Handlers;
+
+public class LavalinkCfg
+{
+    private static readonly ConnectionEndpoint Endpoint = new ConnectionEndpoint()
+    {
+        Hostname = Environment.GetEnvironmentVariable("LAVALINK_HOST"),
+        Port = Convert.ToInt32(Environment.GetEnvironmentVariable("LAVALINK_PORT"))
+    };
+
+    public static readonly LavalinkConfiguration LavalinkConfig = new(new LavalinkConfiguration()
+    {
+        Password = Environment.GetEnvironmentVariable("LAVALINK_PASSWORD"),
+        RestEndpoint = Endpoint,
+        SocketEndpoint = Endpoint
+    });
+}
 
 [SlashCommandGroup("voice", "Voice commands")]
 public class VoiceCommands : ApplicationCommandsModule
@@ -24,6 +41,7 @@ public class VoiceCommands : ApplicationCommandsModule
         }
 
         var lavalink = ctx.Client.GetLavalink();
+        
         var guildPlayer = lavalink.GetGuildPlayer(ctx.Guild);
         if (guildPlayer != null)
         {
@@ -35,8 +53,8 @@ public class VoiceCommands : ApplicationCommandsModule
         if (!lavalink.ConnectedSessions.Any())
         {
             await ctx.EditResponseAsync(
-                new DiscordWebhookBuilder().WithContent("The Lavalink connection is not established (The bot needs to be restarted)"));
-            return;
+                new DiscordWebhookBuilder().WithContent("The Lavalink connection is not established! Attempting to re-connect."));
+            await lavalink.ConnectAsync(LavalinkCfg.LavalinkConfig);
         }
 
         var session = lavalink.ConnectedSessions.Values.First();
@@ -56,10 +74,19 @@ public class VoiceCommands : ApplicationCommandsModule
     {
         await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         var lavalink = ctx.Client.GetLavalink();
+        
+        if (!lavalink.ConnectedSessions.Any())
+        {
+            await ctx.EditResponseAsync(
+                new DiscordWebhookBuilder().WithContent("The Lavalink connection is not established! Attempting to re-connect."));
+            await lavalink.ConnectAsync(LavalinkCfg.LavalinkConfig);
+        }
+        
         var guildPlayer = lavalink.GetGuildPlayer(ctx.Guild);
+        
         if (guildPlayer == null)
         {
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Lavalink not connected."));
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("I am not in a VC."));
             return;
         }
 
@@ -297,6 +324,15 @@ public class VoiceHandler : ApplicationCommandsModule
         await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
 
         var lavalink = ctx.Client.GetLavalink();
+
+        if (!lavalink.ConnectedSessions.Any())
+        {
+            await ctx.EditResponseAsync(
+                new DiscordWebhookBuilder().WithContent("The Lavalink connection is not established! Attempting to re-connect."));
+            await lavalink.ConnectAsync(LavalinkCfg.LavalinkConfig);
+        }
+        
+        
         var guildPlayer = lavalink.GetGuildPlayer(ctx.Guild);
 
         if (guildPlayer != null)
