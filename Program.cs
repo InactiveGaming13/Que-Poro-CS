@@ -60,11 +60,12 @@ internal class Program
         
         // Register ApplicationCommands
         ApplicationCommandsExtension appCommands = discord.UseApplicationCommands();
-        appCommands.RegisterGlobalCommands<VoiceCommands>();
-        appCommands.RegisterGlobalCommands<TesterCommands>();
-        appCommands.RegisterGlobalCommands<ConfigCommands>();
-        appCommands.RegisterGlobalCommands<ReactionCommands>();
         appCommands.RegisterGlobalCommands<AdminCommands>();
+        appCommands.RegisterGlobalCommands<ConfigCommands>();
+        appCommands.RegisterGlobalCommands<CreateAVcCommands>();
+        appCommands.RegisterGlobalCommands<ReactionCommands>();
+        appCommands.RegisterGlobalCommands<TesterCommands>();
+        appCommands.RegisterGlobalCommands<VoiceCommands>();
         
         // Handle the bot Ready event
         discord.Ready += async (s, e) =>
