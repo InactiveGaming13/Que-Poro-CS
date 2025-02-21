@@ -46,7 +46,8 @@ internal class Program
         {
             Password = Environment.GetEnvironmentVariable("LAVALINK_PASSWORD"),
             RestEndpoint = endpoint,
-            SocketEndpoint = endpoint
+            SocketEndpoint = endpoint,
+            EnableBuiltInQueueSystem = true
         };
 
         // Enable voice for the bot

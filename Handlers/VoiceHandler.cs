@@ -24,7 +24,8 @@ public class LavalinkCfg
     {
         Password = Environment.GetEnvironmentVariable("LAVALINK_PASSWORD"),
         RestEndpoint = Endpoint,
-        SocketEndpoint = Endpoint
+        SocketEndpoint = Endpoint,
+        EnableBuiltInQueueSystem = true
     });
 }
 
@@ -156,17 +157,19 @@ public class VoiceCommands : ApplicationCommandsModule
                 await guildPlayer.PlayAsync(track);
                 await ctx.EditResponseAsync($"Forced [{guildPlayer.CurrentTrack.Info.Title}]({guildPlayer.CurrentTrack.Info.Uri}) by {guildPlayer.CurrentTrack.Info.Author}.");
                 return;
-            } else if (force && !ctx.Member.Permissions.HasPermission(Permissions.Administrator))
+            }
+
+            if (force && !ctx.Member.Permissions.HasPermission(Permissions.Administrator))
             {
                 guildPlayer.AddToQueue(track);
-                await ctx.EditResponseAsync($"Added [{track.Info.Title}]({track.Info.Uri}) to the queue (you lack permissions to force play).");
+                await ctx.EditResponseAsync($"Added [{track.Info.Title}]({track.Info.Uri}) by {track.Info.Author} to the queue (you lack permissions to force play).");
                 return;
             }
 
             if (guildPlayer.CurrentTrack != null)
             {
                 guildPlayer.AddToQueue(track);
-                await ctx.EditResponseAsync($"Added [{track.Info.Title}]({track.Info.Uri}) to the queue.");
+                await ctx.EditResponseAsync($"Added [{track.Info.Title}]({track.Info.Uri}) by {track.Info.Author} to the queue.");
                 return;
             }
 
@@ -315,6 +318,46 @@ public class VoiceCommands : ApplicationCommandsModule
         
         await ctx.EditResponseAsync($"Currently playing [{guildPlayer.CurrentTrack.Info.Title}]({guildPlayer.CurrentTrack.Info.Uri}) by {guildPlayer.CurrentTrack.Info.Author}.");
     }
+
+    [SlashCommand("queue", "Gets the current queue")]
+    public async Task getQueue(InteractionContext ctx)
+    {
+        await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+        if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
+        {
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You are not in a voice channel."));
+            return;
+        }
+
+        var lavalink = ctx.Client.GetLavalink();
+        var guildPlayer = lavalink.GetGuildPlayer(ctx.Guild);
+
+        if (guildPlayer == null)
+        {
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("I am not in a voice channel."));
+            return;
+        }
+        
+        if (guildPlayer.CurrentTrack == null)
+        {
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("There are no tracks loaded."));
+        }
+
+        if (guildPlayer.Queue.Count == 0)
+        {
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("The current queue is empty!"));
+            return;
+        }
+        
+        string queue = "The current queue:\n";
+        
+        foreach (var song in guildPlayer.Queue)
+        {
+            queue += $"{song.Info.Title} by {song.Info.Author}\n";
+        }
+
+        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent(queue));
+    }
 }
 
 public class VoiceHandler : ApplicationCommandsModule
@@ -355,7 +398,7 @@ public class VoiceHandler : ApplicationCommandsModule
 
     public static async Task VoiceStateUpdated(DiscordClient s, VoiceStateUpdateEventArgs e)
     {
-        if (e is { Before: not null, After: not null })
+        if (e is { Before: not null, After.ChannelId: not null })
         {
             Console.WriteLine($"{e.User.Username} has switched from {e.Before.Channel.Name} to {e.Channel.Name}");
             return;
@@ -366,7 +409,7 @@ public class VoiceHandler : ApplicationCommandsModule
             Console.WriteLine($"{e.User.Username} has left {e.Before.Channel.Name}");
         }
         
-        if (e.After != null)
+        if (e.After.ChannelId != null)
         {
             Console.WriteLine($"{e.User.Username} has joined {e.After.Channel.Name}");
         }
