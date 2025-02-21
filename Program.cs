@@ -54,7 +54,9 @@ internal class Program
         
         // Set functions for various events
         discord.MessageCreated += MessageHandler.MessageCreated;
+        discord.MessageDeleted += MessageHandler.MessageDeleted;
         discord.GuildMemberAdded += GuildHandler.MemberAdded;
+        discord.VoiceStateUpdated += VoiceHandler.VoiceStateUpdated;
         
         // Register ApplicationCommands
         ApplicationCommandsExtension appCommands = discord.UseApplicationCommands();
@@ -68,7 +70,7 @@ internal class Program
         discord.Ready += async (s, e) =>
         {
             await lavalink.ConnectAsync(lavalinkConfig);
-            await discord.UpdateStatusAsync(new DiscordActivity("With my C through balls", ActivityType.Playing), UserStatus.Online);
+            await discord.UpdateStatusAsync(new DiscordActivity("with my C through balls", ActivityType.Playing), UserStatus.Online);
             Console.WriteLine("Bot is ready.");
         };
         

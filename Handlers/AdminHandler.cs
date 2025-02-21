@@ -1,34 +1,54 @@
-﻿using DisCatSharp.ApplicationCommands.Context;
+﻿using DisCatSharp.ApplicationCommands;
+using DisCatSharp.ApplicationCommands.Attributes;
+using DisCatSharp.ApplicationCommands.Context;
 using DisCatSharp.Entities;
 using DisCatSharp.Enums;
+using DisCatSharp.Lavalink;
 
 namespace Que_Poro_CS.Handlers;
 
-public class AdminHandler
+[SlashCommandGroup("admin", "Admin commands")]
+public class AdminCommands : ApplicationCommandsModule
 {
-    public static async Task AddUserAdmin(InteractionContext ctx, DiscordUser user)
+    [SlashCommand("add", "Adds an Admin to the Database (Not implemented yet)")]
+    public async Task AddAdmin(InteractionContext ctx, [Option("user", "The user to add as an admin")] DiscordUser user)
     {
-        foreach (var VARIABLE in ctx.Member.Roles)
+        await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+        if (Convert.ToString(ctx.User.Id) == Environment.GetEnvironmentVariable("BOT_OWNER_ID"))
         {
-            Console.WriteLine(VARIABLE.ToString());
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Adding {user.Mention} to the database as a bot admin..."));
+            await Task.Delay(1);
+            await ctx.EditResponseAsync($"Added {user.Mention} to the database as a bot admin.");
+            return;
         }
-        await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource,
-            new DiscordInteractionResponseBuilder()
-            {
-                Content = $"Added {user.Mention} to the admin list."
-            });
+        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command is not yet implemented."));
     }
-    
-    public static async Task RemoveUserAdmin(InteractionContext ctx, DiscordUser user)
+
+    [SlashCommand("remove", "Removes an Admin from the Database (Not implemented yet)")]
+    public async Task RemoveAdmin(InteractionContext ctx, [Option("user", "The admin to remove")] DiscordUser user)
     {
-        foreach (var VARIABLE in ctx.Member.Roles)
+        await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+        if (Convert.ToString(ctx.User.Id) == Environment.GetEnvironmentVariable("BOT_OWNER_ID"))
         {
-            Console.WriteLine(VARIABLE.ToString());
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Removing {user.Mention} from the database as a bot admin..."));
+            await Task.Delay(1);
+            await ctx.EditResponseAsync($"Removed {user.Mention} from the database as a bot admin.");
+            return;
         }
-        await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource,
-            new DiscordInteractionResponseBuilder()
-            {
-                Content = $"Removed {user.Mention} from the admin list."
-            });
+        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command is not yet implemented."));
+    }
+
+    [SlashCommand("shutdown", "Shuts the bot down (Not implemented yet)")]
+    public async Task RemoveAdmin(InteractionContext ctx)
+    {
+        await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+        if (Convert.ToString(ctx.User.Id) == Environment.GetEnvironmentVariable("BOT_OWNER_ID"))
+        {
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Shutting down..."));
+            await ctx.Client.UpdateStatusAsync(new DiscordActivity(), UserStatus.Offline);
+            await ctx.Client.DisconnectAsync();
+            Environment.Exit(0);
+        }
+        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command is not yet implemented."));
     }
 }

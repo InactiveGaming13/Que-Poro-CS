@@ -1,12 +1,18 @@
-﻿using DisCatSharp.ApplicationCommands.Context;
+﻿using DisCatSharp.ApplicationCommands;
+using DisCatSharp.ApplicationCommands.Attributes;
+using DisCatSharp.ApplicationCommands.Context;
 using DisCatSharp.Entities;
 using DisCatSharp.Enums;
 
 namespace Que_Poro_CS.Handlers;
 
-public class ReactionHandler
+[SlashCommandGroup("reactions", "Reaction commands")]
+public class ReactionCommands : ApplicationCommandsModule
 {
-    public static async Task AddUserReaction(InteractionContext ctx, DiscordUser user, string emoji)
+    [SlashCommand("add", "Adds a Reaction to you or a specified user (admin)")]
+    public async Task AddReaction(InteractionContext ctx,
+        [Option("emoji", "emoji you want to have reacted")] String emoji,
+        [Option("user", "The user you want to add to your reactions")] DiscordUser user = null)
     {
         if (user != null && ctx.User != user && !ctx.User.IsStaff)
         {

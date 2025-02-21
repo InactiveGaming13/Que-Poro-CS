@@ -1,23 +1,33 @@
 ﻿using DisCatSharp;
 using DisCatSharp.ApplicationCommands;
+using DisCatSharp.ApplicationCommands.Attributes;
 using DisCatSharp.ApplicationCommands.Context;
 using DisCatSharp.Entities;
 using DisCatSharp.Enums;
+using DisCatSharp.EventArgs;
 using DisCatSharp.Lavalink;
 using DisCatSharp.Lavalink.Entities;
 using DisCatSharp.Lavalink.Enums;
 
 namespace Que_Poro_CS.Handlers;
 
-public class VoiceHandler : ApplicationCommandsModule
+[SlashCommandGroup("voice", "Voice commands")]
+public class VoiceCommands : ApplicationCommandsModule
 {
-    public static async Task Connect(InteractionContext ctx, DiscordChannel channel)
+    [SlashCommand("join", "Joins a Voice Channel")]
+    public async Task Join(InteractionContext ctx,
+        [Option("channel", "Channel to join"), ChannelTypes(ChannelType.Voice)] DiscordChannel channel = null!)
     {
+        if (channel is null && ctx.Member.VoiceState != null && ctx.Member.VoiceState.Channel != null)
+        {
+            channel = ctx.Member.VoiceState.Channel;
+        }
+
         var lavalink = ctx.Client.GetLavalink();
         var guildPlayer = lavalink.GetGuildPlayer(ctx.Guild);
         if (guildPlayer != null)
         {
-            await SwitchChannel(ctx, channel);
+            await VoiceHandler.SwitchChannel(ctx, channel);
             return;
         }
         
@@ -25,7 +35,7 @@ public class VoiceHandler : ApplicationCommandsModule
         if (!lavalink.ConnectedSessions.Any())
         {
             await ctx.EditResponseAsync(
-                new DiscordWebhookBuilder().WithContent("The Lavalink connection is not established"));
+                new DiscordWebhookBuilder().WithContent("The Lavalink connection is not established (The bot needs to be restarted)"));
             return;
         }
 
@@ -41,7 +51,8 @@ public class VoiceHandler : ApplicationCommandsModule
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Joined {channel.Mention}!"));
     }
 
-    public static async Task Disconnect(InteractionContext ctx)
+    [SlashCommand("leave", "Leaves a Voice Channel")]
+    public async Task Leave(InteractionContext ctx)
     {
         await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         var lavalink = ctx.Client.GetLavalink();
@@ -56,32 +67,10 @@ public class VoiceHandler : ApplicationCommandsModule
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Left {guildPlayer.Channel.Mention}!"));
     }
 
-    private static async Task SwitchChannel(InteractionContext ctx, DiscordChannel channel)
-    {
-        await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
-        
-        var lavalink = ctx.Client.GetLavalink();
-        var guildPlayer = lavalink.GetGuildPlayer(ctx.Guild);
-
-        if (guildPlayer != null)
-        {
-            await guildPlayer.DisconnectAsync();
-        }
-        
-        if (!lavalink.ConnectedSessions.Any())
-        {
-            await ctx.EditResponseAsync(
-                new DiscordWebhookBuilder().WithContent("The Lavalink connection is not established"));
-            return;
-        }
-        
-        var session = lavalink.ConnectedSessions.Values.First();
-        
-        await session.ConnectAsync(channel);
-        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Switched to {channel.Mention}!"));
-    }
-
-    public static async Task PlayTrack(InteractionContext ctx, string trackTitle, bool force = false)
+    [SlashCommand("play", "Play some music")]
+    public async Task Play(InteractionContext ctx,
+        [Option("song", "Song title to play")] string track,
+        [Option("force", "Force play and override the queue")] bool force = false)
     {
         await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         // Important to check the voice state itself first, as it may throw a NullReferenceException if they don't have a voice state.
@@ -107,11 +96,11 @@ public class VoiceHandler : ApplicationCommandsModule
         {
             if (usingYt)
             {
-                loadResult = await guildPlayer.LoadTracksAsync(LavalinkSearchType.Youtube, trackTitle);
+                loadResult = await guildPlayer.LoadTracksAsync(LavalinkSearchType.Youtube, title);
             }
             else
             {
-                loadResult = await guildPlayer.LoadTracksAsync(LavalinkSearchType.Plain, trackTitle);
+                loadResult = await guildPlayer.LoadTracksAsync(LavalinkSearchType.Plain, title);
             }
             
             
@@ -123,7 +112,7 @@ public class VoiceHandler : ApplicationCommandsModule
                     await GetResult(title, true);
                     return;
                 }
-                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Track search failed for {trackTitle}."));
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Track search failed for {title}."));
                 return;
             }
             
@@ -135,10 +124,15 @@ public class VoiceHandler : ApplicationCommandsModule
                 _ => throw new InvalidOperationException("Unexpected load result type.")
             };
 
-            if (force)
+            if (force && ctx.Member.Permissions.HasPermission(Permissions.Administrator))
             {
                 await guildPlayer.PlayAsync(track);
                 await ctx.EditResponseAsync($"Forced [{guildPlayer.CurrentTrack.Info.Title}]({guildPlayer.CurrentTrack.Info.Uri}) by {guildPlayer.CurrentTrack.Info.Author}.");
+                return;
+            } else if (force && !ctx.Member.Permissions.HasPermission(Permissions.Administrator))
+            {
+                guildPlayer.AddToQueue(track);
+                await ctx.EditResponseAsync($"Added [{track.Info.Title}]({track.Info.Uri}) to the queue (you lack permissions to force play).");
                 return;
             }
 
@@ -154,10 +148,11 @@ public class VoiceHandler : ApplicationCommandsModule
             await ctx.EditResponseAsync($"Now playing [{guildPlayer.CurrentTrack.Info.Title}]({guildPlayer.CurrentTrack.Info.Uri}) by {track.Info.Author}!");
         }
         
-        await GetResult(trackTitle);
+        await GetResult(track);
     }
 
-    public static async Task PauseTrack(InteractionContext ctx)
+    [SlashCommand("pause", "Pause the current song")]
+    public async Task Pause(InteractionContext ctx)
     {
         await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
@@ -191,7 +186,8 @@ public class VoiceHandler : ApplicationCommandsModule
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Paused [{guildPlayer.CurrentTrack.Info.Title}]({guildPlayer.CurrentTrack.Info.Uri}) by {guildPlayer.CurrentTrack.Info.Author}."));
     }
     
-    public static async Task ResumeTrack(InteractionContext ctx)
+    [SlashCommand("resume", "Resumes the current song")]
+    public async Task Resume(InteractionContext ctx)
     {
         await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
@@ -218,8 +214,9 @@ public class VoiceHandler : ApplicationCommandsModule
         await guildPlayer.ResumeAsync();
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Resumed [{guildPlayer.CurrentTrack.Info.Title}]({guildPlayer.CurrentTrack.Info.Uri}) by {guildPlayer.CurrentTrack.Info.Author}."));
     }
-
-    public static async Task StopTrack(InteractionContext ctx)
+    
+    [SlashCommand("stop", "Stops the current song")]
+    public async Task Stop(InteractionContext ctx)
     {
         await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
@@ -247,8 +244,9 @@ public class VoiceHandler : ApplicationCommandsModule
         await guildPlayer.StopAsync();
         await ctx.EditResponseAsync("Stopped the track.");
     }
-
-    public static async Task SkipTrack(InteractionContext ctx)
+    
+    [SlashCommand("skip", "skips the current song")]
+    public async Task Skip(InteractionContext ctx)
     {
         await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
@@ -264,7 +262,8 @@ public class VoiceHandler : ApplicationCommandsModule
         await ctx.EditResponseAsync($"Skipped to [{guildPlayer.CurrentTrack.Info.Title}]({guildPlayer.CurrentTrack.Info.Uri}) by {guildPlayer.CurrentTrack.Info.Author}.");
     }
     
-    public static async Task CurrentlyPlaying(InteractionContext ctx)
+    [SlashCommand("currently_playing", "Gets the current song")]
+    public async Task CurrentlyPlaying(InteractionContext ctx)
     {
         await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
@@ -289,14 +288,47 @@ public class VoiceHandler : ApplicationCommandsModule
         
         await ctx.EditResponseAsync($"Currently playing [{guildPlayer.CurrentTrack.Info.Title}]({guildPlayer.CurrentTrack.Info.Uri}) by {guildPlayer.CurrentTrack.Info.Author}.");
     }
+}
 
-    public static async Task UserAdded(DiscordChannel channel)
+public class VoiceHandler : ApplicationCommandsModule
+{
+    public static async Task SwitchChannel(InteractionContext ctx, DiscordChannel channel)
     {
-        Console.WriteLine("UserAdded");
+        await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+
+        var lavalink = ctx.Client.GetLavalink();
+        var guildPlayer = lavalink.GetGuildPlayer(ctx.Guild);
+
+        if (guildPlayer != null)
+        {
+            await guildPlayer.DisconnectAsync();
+        }
+
+        if (!lavalink.ConnectedSessions.Any())
+        {
+            await ctx.EditResponseAsync(
+                new DiscordWebhookBuilder().WithContent("The Lavalink connection is not established"));
+            return;
+        }
+
+        var session = lavalink.ConnectedSessions.Values.First();
+
+        await session.ConnectAsync(channel);
+        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Switched to {channel.Mention}!"));
     }
 
-    public static async Task UserRemoved(DiscordChannel channel)
+    public static async Task VoiceStateUpdated(DiscordClient s, VoiceStateUpdateEventArgs e)
     {
-        Console.WriteLine("UserRemoved");
+        Console.WriteLine($"User: {e.User.Username}");
+        
+        if (e.Before != null)
+        {
+            Console.WriteLine($"Before: {e.Before.Channel.Name}");
+        }
+        
+        if (e.After != null)
+        {
+            Console.WriteLine($"After: {e.After.Channel.Name}");
+        }
     }
 }
