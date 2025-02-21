@@ -37,6 +37,30 @@ public class AdminCommands : ApplicationCommandsModule
         }
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command is not yet implemented."));
     }
+    
+    [SlashCommand("enable_create_a_vc", "Disables the 'create_a_vc' function globally (Not implemented)")]
+    public static async Task EnableGlobalCreateAVc(InteractionContext ctx)
+    {
+        await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+        if (Convert.ToString(ctx.User.Id) == Environment.GetEnvironmentVariable("BOT_OWNER_ID"))
+        {
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Enabled the 'create a vc' function globally."));
+            return;
+        }
+        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command is not yet implemented."));
+    }
+
+    [SlashCommand("disable_create_a_vc", "Disables the 'create_a_vc' function globally (Not implemented)")]
+    public static async Task DisableGlobalCreateAVc(InteractionContext ctx)
+    {
+        await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+        if (Convert.ToString(ctx.User.Id) == Environment.GetEnvironmentVariable("BOT_OWNER_ID"))
+        {
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Disabled the 'create a vc' function globally."));
+            return;
+        }
+        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command is not yet implemented."));
+    }
 
     [SlashCommand("shutdown", "Shuts the bot down (Not implemented yet)")]
     public async Task RemoveAdmin(InteractionContext ctx)
