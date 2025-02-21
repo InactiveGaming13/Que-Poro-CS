@@ -319,16 +319,20 @@ public class VoiceHandler : ApplicationCommandsModule
 
     public static async Task VoiceStateUpdated(DiscordClient s, VoiceStateUpdateEventArgs e)
     {
-        Console.WriteLine($"User: {e.User.Username}");
+        if (e is { Before: not null, After: not null })
+        {
+            Console.WriteLine($"{e.User.Username} has switched from {e.Before.Channel.Name} to {e.Channel.Name}");
+            return;
+        }
         
         if (e.Before != null)
         {
-            Console.WriteLine($"Before: {e.Before.Channel.Name}");
+            Console.WriteLine($"{e.User.Username} has left {e.Before.Channel.Name}");
         }
         
         if (e.After != null)
         {
-            Console.WriteLine($"After: {e.After.Channel.Name}");
+            Console.WriteLine($"{e.User.Username} has joined {e.After.Channel.Name}");
         }
     }
 }
