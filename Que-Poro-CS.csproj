@@ -25,6 +25,7 @@
       <PackageReference Include="DisCatSharp.Lavalink" Version="10.7.0-nightly-002" />
       <PackageReference Include="DisCatSharp.VoiceNext.Natives" Version="10.7.0-nightly-002" />
       <PackageReference Include="dotenv.net" Version="3.2.1" />
+      <PackageReference Include="Npgsql" Version="9.0.2" />
     </ItemGroup>
 
 </Project>
