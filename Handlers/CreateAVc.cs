@@ -3,6 +3,7 @@ using DisCatSharp.ApplicationCommands.Attributes;
 using DisCatSharp.ApplicationCommands.Context;
 using DisCatSharp.Entities;
 using DisCatSharp.Enums;
+using DisCatSharp.EventArgs;
 
 namespace Que_Poro_CS.Handlers;
 
@@ -79,5 +80,33 @@ public class CreateAVcCommands : ApplicationCommandsModule
         }
 
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command is not yet implemented."));
+    }
+}
+
+public class CreateAVcHandler
+{
+    public static List<DiscordChannel> TempVcs = new List<DiscordChannel>();
+    public static async Task CreateTempVc(VoiceStateUpdateEventArgs e)
+    {
+        DiscordChannel newChannel = await e.Guild.CreateChannelAsync($"{e.User.GlobalName}'s VC", ChannelType.Voice,
+            e.After.Channel.Parent, userLimit: 5);
+        await newChannel.PlaceMemberAsync(e.After.Member);
+        TempVcs.Add(newChannel);
+    }
+
+    public static async Task RemoveTempVc(VoiceStateUpdateEventArgs e)
+    {
+        TempVcs.Remove(e.Before.Channel);
+        await e.Before.Channel.DeleteAsync();
+    }
+
+    public static async Task ModifyTempVc(DiscordChannel channel, string name, int memberLimit, int bitrate)
+    {
+        await channel.ModifyAsync(x =>
+        {
+            x.Name = name;
+            x.UserLimit = memberLimit;
+            x.Bitrate = bitrate;
+        });
     }
 }

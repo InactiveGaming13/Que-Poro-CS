@@ -46,7 +46,8 @@ internal class Program
         {
             Password = Environment.GetEnvironmentVariable("LAVALINK_PASSWORD"),
             RestEndpoint = endpoint,
-            SocketEndpoint = endpoint
+            SocketEndpoint = endpoint,
+            EnableBuiltInQueueSystem = true
         };
 
         // Enable voice for the bot
@@ -55,6 +56,7 @@ internal class Program
         // Set functions for various events
         discord.MessageCreated += MessageHandler.MessageCreated;
         discord.MessageDeleted += MessageHandler.MessageDeleted;
+        discord.MessageUpdated += MessageHandler.MessageUpdated;
         discord.GuildMemberAdded += GuildHandler.MemberAdded;
         discord.VoiceStateUpdated += VoiceHandler.VoiceStateUpdated;
         
@@ -63,6 +65,7 @@ internal class Program
         appCommands.RegisterGlobalCommands<AdminCommands>();
         appCommands.RegisterGlobalCommands<ConfigCommands>();
         appCommands.RegisterGlobalCommands<CreateAVcCommands>();
+        appCommands.RegisterGlobalCommands<MusicCommands>();
         appCommands.RegisterGlobalCommands<ReactionCommands>();
         appCommands.RegisterGlobalCommands<TesterCommands>();
         appCommands.RegisterGlobalCommands<VoiceCommands>();
