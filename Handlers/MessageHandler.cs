@@ -44,6 +44,12 @@ public static class MessageHandler
         return Task.CompletedTask;
     }
 
+    public static Task MessageUpdated(DiscordClient s, MessageUpdateEventArgs e)
+    {
+        Console.WriteLine($"Updated message in Guild: {e.Guild.Name} in Channel: {e.Channel.Name} with content: {e.Message.Content}");
+        return Task.CompletedTask;
+    }
+
     public static async Task AddMessageReaction(MessageCreateEventArgs e, DiscordEmoji emoji)
     {
         await e.Message.CreateReactionAsync(emoji);
