@@ -85,12 +85,14 @@ public class CreateAVcCommands : ApplicationCommandsModule
 
 public class CreateAVcHandler
 {
-    public static List<DiscordChannel> TempVcs = new List<DiscordChannel>();
+    public static List<DiscordChannel> TempVcs = new();
     public static async Task CreateTempVc(VoiceStateUpdateEventArgs e)
     {
         DiscordChannel newChannel = await e.Guild.CreateChannelAsync($"{e.User.GlobalName}'s VC", ChannelType.Voice,
             e.After.Channel.Parent, userLimit: 5);
+        Console.WriteLine($"Created Temp VC: {newChannel.Name}");
         await newChannel.PlaceMemberAsync(e.After.Member);
+        Console.WriteLine($"Moved Member: {e.After.Member.GlobalName} to Temp VC: {newChannel.Name}");
         TempVcs.Add(newChannel);
     }
 
@@ -98,6 +100,7 @@ public class CreateAVcHandler
     {
         TempVcs.Remove(e.Before.Channel);
         await e.Before.Channel.DeleteAsync();
+        Console.WriteLine($"Deleted Temp VC: {e.Before.Channel.Name}");
     }
 
     public static async Task ModifyTempVc(DiscordChannel channel, string name, int memberLimit, int bitrate)
