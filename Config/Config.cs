@@ -1,4 +1,4 @@
-﻿namespace Que_Poro_CS.Config;
+﻿namespace QuePoro.Config;
 
 public class Config
 {

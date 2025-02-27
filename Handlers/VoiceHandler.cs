@@ -6,15 +6,13 @@ using DisCatSharp.Entities;
 using DisCatSharp.Enums;
 using DisCatSharp.EventArgs;
 using DisCatSharp.Lavalink;
-using DisCatSharp.Lavalink.Entities;
-using DisCatSharp.Lavalink.Enums;
 using DisCatSharp.Net;
 
-namespace Que_Poro_CS.Handlers;
+namespace QuePoro.Handlers;
 
 public class LavalinkCfg
 {
-    private static readonly ConnectionEndpoint Endpoint = new ConnectionEndpoint()
+    private static readonly ConnectionEndpoint Endpoint = new()
     {
         Hostname = Environment.GetEnvironmentVariable("LAVALINK_HOST"),
         Port = Convert.ToInt32(Environment.GetEnvironmentVariable("LAVALINK_PORT"))
@@ -36,7 +34,7 @@ public class VoiceCommands : ApplicationCommandsModule
     public async Task Join(InteractionContext ctx,
         [Option("channel", "Channel to join"), ChannelTypes(ChannelType.Voice)] DiscordChannel channel = null!)
     {
-        if (channel is null && ctx.Member.VoiceState != null && ctx.Member.VoiceState.Channel != null)
+        if (channel is null && ctx.Member.VoiceState is not null && ctx.Member.VoiceState.Channel is not null)
         {
             channel = ctx.Member.VoiceState.Channel;
         }
@@ -136,7 +134,6 @@ public class VoiceHandler
     {
         if (e is { Before: not null, After.ChannelId: not null })
         {
-            Console.WriteLine($"{e.User.Username} has switched from {e.Before.Channel.Name} to {e.Channel.Name}");
             if (CreateAVcHandler.TempVcs.Contains(e.Before.Channel) && e.Before.Channel.Users.Count == 0)
             {
                 await CreateAVcHandler.RemoveTempVc(e);
@@ -150,7 +147,6 @@ public class VoiceHandler
         
         if (e.Before != null)
         {
-            Console.WriteLine($"{e.User.Username} has left {e.Before.Channel.Name}");
             if (CreateAVcHandler.TempVcs.Contains(e.Before.Channel) && e.Before.Channel.Users.Count == 0)
             {
                 await CreateAVcHandler.RemoveTempVc(e);
@@ -159,7 +155,6 @@ public class VoiceHandler
         
         if (e.After.ChannelId != null)
         {
-            Console.WriteLine($"{e.User.Username} has joined {e.After.Channel.Name}");
             if (Convert.ToString(e.After.ChannelId) == Environment.GetEnvironmentVariable("TEMP_VC_ID"))
             {
                 await CreateAVcHandler.CreateTempVc(e);

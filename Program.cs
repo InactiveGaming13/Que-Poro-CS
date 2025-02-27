@@ -5,9 +5,9 @@ using DisCatSharp.Enums;
 using DisCatSharp.Lavalink;
 using DisCatSharp.Net;
 using dotenv.net;
-using Que_Poro_CS.Handlers;
+using QuePoro.Handlers;
 
-namespace Que_Poro_CS;
+namespace QuePoro;
 
 internal class Program
 {
@@ -76,6 +76,10 @@ internal class Program
             await lavalink.ConnectAsync(lavalinkConfig);
             await discord.UpdateStatusAsync(new DiscordActivity("with my C through balls", ActivityType.Playing), UserStatus.Online);
             Console.WriteLine("Bot is ready.");
+
+            await Database.Database.ConnectToDb();
+            await Database.Database.AddData();
+            await Database.Database.GetData();
         };
         
         // Connect to discord and stop the application from closing prematurely

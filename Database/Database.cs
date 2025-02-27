@@ -1,6 +1,6 @@
 ﻿using Npgsql;
 
-namespace Que_Poro_CS.Database;
+namespace QuePoro.Database;
 
 public class Database
 {
@@ -12,7 +12,23 @@ public class Database
             $"Username={Environment.GetEnvironmentVariable("DATABASE_USER")};" +
             $"Password={Environment.GetEnvironmentVariable("DATABASE_PASS")};" +
             $"Database={Environment.GetEnvironmentVariable("DATABASE_DB")}";
-        DataSource = NpgsqlDataSource.Create(connString);
+        
+        NpgsqlConnection connection;
+        while (true)
+            try
+            {
+                connection = new NpgsqlConnection(connString);
+                break;
+            }
+            catch (PostgresException exception)
+            {
+                if (exception.SqlState != "53300") throw;
+                Console.WriteLine(
+                    "Connection limit hit. Waiting 500ms before trying again.");
+                await Task.Delay(500);
+            }
+
+        connection.Open();
     }
 
     public static async Task AddData()

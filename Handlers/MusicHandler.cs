@@ -7,7 +7,7 @@ using DisCatSharp.Lavalink;
 using DisCatSharp.Lavalink.Entities;
 using DisCatSharp.Lavalink.Enums;
 
-namespace Que_Poro_CS.Handlers;
+namespace QuePoro.Handlers;
 
 [SlashCommandGroup("music", "Music commands")]
 public class MusicCommands : ApplicationCommandsModule

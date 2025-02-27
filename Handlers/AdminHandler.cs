@@ -3,9 +3,8 @@ using DisCatSharp.ApplicationCommands.Attributes;
 using DisCatSharp.ApplicationCommands.Context;
 using DisCatSharp.Entities;
 using DisCatSharp.Enums;
-using DisCatSharp.Lavalink;
 
-namespace Que_Poro_CS.Handlers;
+namespace QuePoro.Handlers;
 
 [SlashCommandGroup("admin", "Admin commands")]
 public class AdminCommands : ApplicationCommandsModule

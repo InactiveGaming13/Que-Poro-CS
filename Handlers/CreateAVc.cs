@@ -5,7 +5,7 @@ using DisCatSharp.Entities;
 using DisCatSharp.Enums;
 using DisCatSharp.EventArgs;
 
-namespace Que_Poro_CS.Handlers;
+namespace QuePoro.Handlers;
 
 [SlashCommandGroup("create_a_vc", "The create a VC commands (Not implemented)")]
 public class CreateAVcCommands : ApplicationCommandsModule
@@ -81,6 +81,46 @@ public class CreateAVcCommands : ApplicationCommandsModule
 
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command is not yet implemented."));
     }
+
+    [SlashCommand("modify", "Modifies a temp")]
+    public static async Task ModifyVc(InteractionContext ctx,
+        [Option("name", "The name to set the channel to")] string name="",
+        [Option("mebmber_limit", "The member limit to set the channel to")] int limit=5)
+    {
+        if (name == "")
+        {
+            name = $"{ctx.User.GlobalName}'s VC";
+        }
+        
+        await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+        if (ctx.Member is null)
+        {
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("DMs are not supported."));
+        }
+        
+        if (ctx.Member.VoiceState is null)
+        {
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You are not in a VC."));
+            return;
+        }
+
+        if (!CreateAVcHandler.TempVcs.Contains(ctx.Member.VoiceState.Channel))
+        {
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You are not in a temp VC."));
+            return;
+        }
+
+
+        if (!ctx.Member.Permissions.HasPermission(Permissions.ManageChannels))
+        {
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                "You do not have permission to modify temp VCs (uses role perms at the moment)."));
+            return;
+        }
+        
+        await CreateAVcHandler.ModifyTempVc(ctx.Member.VoiceState.Channel, name, limit);
+        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Edited {ctx.Member.VoiceState.Channel.Mention}"));
+    }
 }
 
 public class CreateAVcHandler
@@ -98,18 +138,18 @@ public class CreateAVcHandler
 
     public static async Task RemoveTempVc(VoiceStateUpdateEventArgs e)
     {
+        string channelName = e.Before.Channel.Name;
         TempVcs.Remove(e.Before.Channel);
         await e.Before.Channel.DeleteAsync();
-        Console.WriteLine($"Deleted Temp VC: {e.Before.Channel.Name}");
+        Console.WriteLine($"Deleted Temp VC: {channelName}");
     }
 
-    public static async Task ModifyTempVc(DiscordChannel channel, string name, int memberLimit, int bitrate)
+    public static async Task ModifyTempVc(DiscordChannel channel, string name, int memberLimit)
     {
         await channel.ModifyAsync(x =>
         {
             x.Name = name;
             x.UserLimit = memberLimit;
-            x.Bitrate = bitrate;
         });
     }
 }

@@ -4,7 +4,7 @@ using DisCatSharp.ApplicationCommands.Context;
 using DisCatSharp.Entities;
 using DisCatSharp.Enums;
 
-namespace Que_Poro_CS.Handlers;
+namespace QuePoro.Handlers;
 
 [SlashCommandGroup("testers", "Tester commands to check the bot is responding")]
 public class TesterCommands : ApplicationCommandsModule

@@ -2,7 +2,7 @@
 using DisCatSharp.Entities;
 using DisCatSharp.EventArgs;
 
-namespace Que_Poro_CS.Handlers;
+namespace QuePoro.Handlers;
 
 public static class MessageHandler
 {
@@ -16,14 +16,24 @@ public static class MessageHandler
             return;
         }
 
+        if (Convert.ToString(e.Message.Author.Id) == Environment.GetEnvironmentVariable("BOT_OWNER_ID"))
+        {
+            await AddMessageReaction(e, DiscordEmoji.FromUnicode("\U0001F913"));
+        }
+
         switch (e.Message.Content.ToLower())
         {
             case "cock":
+                DiscordMember member = await e.Author.ConvertToMember(e.Guild);
+                foreach (var role in member.Roles)
+                {
+                    if (role.Name.ToLower() == "horny")
+                    {
+                        await e.Message.RespondAsync("Stop being a horny cunt.");
+                        return;
+                    }
+                }
                 await e.Message.RespondAsync("I will give you the horny role.");
-                break;
-            
-            case "ping":
-                await e.Message.RespondAsync("Pong!");
                 break;
         }
 
