@@ -37,14 +37,6 @@ public class CreateAVcCommands : ApplicationCommandsModule
                     new DiscordWebhookBuilder().WithContent($"{channel.Mention} is not a valid voice channel"));
             }
 
-            if (Convert.ToString(ctx.Member.Id) != Environment.GetEnvironmentVariable("BOT_OWNER_ID") ||
-                ctx.Member.Permissions.HasPermission(Permissions.Administrator))
-            {
-                await ctx.EditResponseAsync(
-                    new DiscordWebhookBuilder().WithContent($"Set the 'create a vc' channel to {channel.Mention}"));
-                return;
-            }
-
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command is not yet implemented."));
         }
         
@@ -56,15 +48,6 @@ public class CreateAVcCommands : ApplicationCommandsModule
         public static async Task ResetCreateAVc(InteractionContext ctx)
         {
             await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
-
-            if (Convert.ToString(ctx.Member.Id) != Environment.GetEnvironmentVariable("BOT_OWNER_ID") ||
-                ctx.Member.Permissions.HasPermission(Permissions.Administrator))
-            {
-                await ctx.EditResponseAsync(
-                    new DiscordWebhookBuilder().WithContent("Reset the 'create a vc' channel."));
-                return;
-            }
-
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command is not yet implemented."));
         }
     }
@@ -86,15 +69,6 @@ public class CreateAVcCommands : ApplicationCommandsModule
             int limit)
         {
             await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
-
-            if (Convert.ToString(ctx.Member.Id) != Environment.GetEnvironmentVariable("BOT_OWNER_ID") ||
-                ctx.Member.Permissions.HasPermission(Permissions.Administrator))
-            {
-                await ctx.EditResponseAsync(
-                    new DiscordWebhookBuilder().WithContent($"Set the default member limit for a temp vc to {limit}"));
-                return;
-            }
-
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command is not yet implemented."));
         }
         
@@ -105,16 +79,7 @@ public class CreateAVcCommands : ApplicationCommandsModule
         [SlashCommand("reset", "Resets the default member limit for a temp vc for this guild")]
         public static async Task ResetCreateAVcMemberLimit(InteractionContext ctx)
         {
-            await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
-
-            if (Convert.ToString(ctx.Member.Id) != Environment.GetEnvironmentVariable("BOT_OWNER_ID") ||
-                ctx.Member.Permissions.HasPermission(Permissions.Administrator))
-            {
-                await ctx.EditResponseAsync(
-                    new DiscordWebhookBuilder().WithContent("Reset the default member limit."));
-                return;
-            }
-
+            await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource); 
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command is not yet implemented."));
         }
     }
@@ -136,15 +101,6 @@ public class CreateAVcCommands : ApplicationCommandsModule
             int bitrate)
         {
             await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
-
-            if (Convert.ToString(ctx.Member.Id) != Environment.GetEnvironmentVariable("BOT_OWNER_ID") ||
-                ctx.Member.Permissions.HasPermission(Permissions.Administrator))
-            {
-                await ctx.EditResponseAsync(
-                    new DiscordWebhookBuilder().WithContent($"Set the default bitrate for a temp vc to {bitrate}"));
-                return;
-            }
-
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command is not yet implemented."));
         }
         
@@ -156,15 +112,6 @@ public class CreateAVcCommands : ApplicationCommandsModule
         public static async Task ResetCreateAVcMemberLimit(InteractionContext ctx)
         {
             await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
-
-            if (Convert.ToString(ctx.Member.Id) != Environment.GetEnvironmentVariable("BOT_OWNER_ID") ||
-                ctx.Member.Permissions.HasPermission(Permissions.Administrator))
-            {
-                await ctx.EditResponseAsync(
-                    new DiscordWebhookBuilder().WithContent("Reset the default bitrate."));
-                return;
-            }
-
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command is not yet implemented."));
         }
     }
@@ -177,15 +124,6 @@ public class CreateAVcCommands : ApplicationCommandsModule
     public static async Task EnableCreateAVc(InteractionContext ctx)
     {
         await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
-
-        if (Convert.ToString(ctx.Member.Id) != Environment.GetEnvironmentVariable("BOT_OWNER_ID") ||
-            ctx.Member.Permissions.HasPermission(Permissions.Administrator))
-        {
-            await ctx.EditResponseAsync(
-                new DiscordWebhookBuilder().WithContent($"Enabled the 'create a vc' function for this guild."));
-            return;
-        }
-
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command is not yet implemented."));
     }
     
@@ -197,15 +135,6 @@ public class CreateAVcCommands : ApplicationCommandsModule
     public static async Task DisableCreateAVc(InteractionContext ctx)
     {
         await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
-
-        if (Convert.ToString(ctx.Member.Id) != Environment.GetEnvironmentVariable("BOT_OWNER_ID") ||
-            ctx.Member.Permissions.HasPermission(Permissions.Administrator))
-        {
-            await ctx.EditResponseAsync(
-                new DiscordWebhookBuilder().WithContent($"Disabled the 'create a vc' function for this guild."));
-            return;
-        }
-
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command is not yet implemented."));
     }
 }
@@ -320,7 +249,7 @@ public class TempVcCommands : ApplicationCommandsModule
 /// </summary>
 public class CreateAVcHandler
 {
-    public static List<DiscordChannel> TempVcs = new();
+    public static List<DiscordChannel> TempVcs = [];
     
     /// <summary>
     /// Creates a temporary VC.
@@ -331,12 +260,14 @@ public class CreateAVcHandler
         string channelName = e.User.GlobalName.ToLower().EndsWith("s")
             ? $"{e.User.GlobalName}' VC"
             : $"{e.User.GlobalName}'s VC";
-        Optional<string> topic = new Optional<string>("Tested");
+        
         DiscordChannel newChannel = await e.Guild.CreateChannelAsync(channelName, ChannelType.Voice,
             e.After.Channel.Parent, userLimit: 5, bitrate: 64000, reason: $"Temp VC created by {e.User.GlobalName}");
         Console.WriteLine($"Created Temp VC: {newChannel.Name}");
+        
         await newChannel.PlaceMemberAsync(e.After.Member);
         Console.WriteLine($"Moved Member: {e.After.Member.GlobalName} to Temp VC: {newChannel.Name}");
+        
         TempVcs.Add(newChannel);
     }
 
