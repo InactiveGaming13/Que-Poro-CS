@@ -147,7 +147,7 @@ public class CreateAVcCommands : ApplicationCommandsModule
 public class TempVcCommands : ApplicationCommandsModule
 {
     /// <summary>
-    /// A command that allows an administrator, or a channel master to modify a temporary VC.
+    /// A command administrators, or channel masters use to modify a temporary VC.
     /// </summary>
     /// <param name="ctx">The context of the command.</param>
     /// <param name="name">The optional new name of the channel.</param>
@@ -165,12 +165,13 @@ public class TempVcCommands : ApplicationCommandsModule
         }
         
         await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
-        if (ctx.Member is null)
+        if (ctx.Member is null || ctx.Guild is null)
         {
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("DMs are not supported."));
+            return;
         }
         
-        if (ctx.Member.VoiceState is null)
+        if (ctx.Member.VoiceState?.Channel is null)
         {
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You are not in a VC."));
             return;
@@ -203,7 +204,7 @@ public class TempVcCommands : ApplicationCommandsModule
     }
 
     /// <summary>
-    /// A command that allows administrators to remove a temporary VC.
+    /// A command administrators use to remove a temporary VC.
     /// </summary>
     /// <param name="ctx">The context of the command.</param>
     /// <param name="channel">The required channel to remove.</param>
@@ -213,9 +214,10 @@ public class TempVcCommands : ApplicationCommandsModule
         DiscordChannel channel)
     {
         await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
-        if (ctx.Member is null)
+        if (ctx.Member is null || ctx.Guild is null)
         {
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("DMs are not supported."));
+            return;
         }
         
         if (!CreateAVcHandler.TempVcs.Contains(channel))
@@ -249,7 +251,7 @@ public class TempVcCommands : ApplicationCommandsModule
 /// </summary>
 public class CreateAVcHandler
 {
-    public static List<DiscordChannel> TempVcs = [];
+    public static readonly List<DiscordChannel> TempVcs = [];
     
     /// <summary>
     /// Creates a temporary VC.
@@ -257,7 +259,19 @@ public class CreateAVcHandler
     /// <param name="e">The arguments created by a users voice state changing.</param>
     public static async Task CreateTempVc(VoiceStateUpdateEventArgs e)
     {
-        string channelName = e.User.GlobalName.ToLower().EndsWith("s")
+        if (e.User.GlobalName is null)
+        {
+            Console.WriteLine("User doesn't exist.");
+            return;
+        }
+
+        if (e.After.Channel is null)
+        {
+            Console.WriteLine("User is not in a VC.");
+            return;
+        }
+        
+        string channelName = e.User.GlobalName.ToLower().EndsWith((char)115)
             ? $"{e.User.GlobalName}' VC"
             : $"{e.User.GlobalName}'s VC";
         
