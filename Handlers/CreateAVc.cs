@@ -7,12 +7,23 @@ using DisCatSharp.EventArgs;
 
 namespace QuePoro.Handlers;
 
+/// <summary>
+/// The class for handling the 'create_a_vc' commands.
+/// </summary>
 [SlashCommandGroup("create_a_vc", "The create a VC commands")]
 public class CreateAVcCommands : ApplicationCommandsModule
 {
+    /// <summary>
+    /// The class for handling the 'channel' commands.
+    /// </summary>
     [SlashCommandGroup("channel", "The temp vc channel commands")]
     public class ChannelCommands : ApplicationCommandsModule
     {
+        /// <summary>
+        /// A command to set the 'create a VC' channel for the current guild.
+        /// </summary>
+        /// <param name="ctx">The context of the command.</param>
+        /// <param name="channel">The channel to set the 'create a VC' channel to.</param>
         [SlashCommand("set", "Sets the create a vc channel for this guild")]
         public static async Task SetCreateAVc(InteractionContext ctx,
             [Option("channel", "The channel to set the 'create a vc' channel to"), ChannelTypes(ChannelType.Voice)]
@@ -37,6 +48,10 @@ public class CreateAVcCommands : ApplicationCommandsModule
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command is not yet implemented."));
         }
         
+        /// <summary>
+        /// A command to reset the 'create a VC' channel for the current guild.
+        /// </summary>
+        /// <param name="ctx">The context of the command.</param>
         [SlashCommand("reset", "Resets the create a vc channel for this guild")]
         public static async Task ResetCreateAVc(InteractionContext ctx)
         {
@@ -54,9 +69,17 @@ public class CreateAVcCommands : ApplicationCommandsModule
         }
     }
 
+    /// <summary>
+    /// The class for handling the 'default_member_limit' commands for the current guild.
+    /// </summary>
     [SlashCommandGroup("default_member_limit", "The temp vc default member limit commands")]
     public class DefaultMemberLimitCommands : ApplicationCommandsModule
     {
+        /// <summary>
+        /// A command to set the 'default_member_limit' for the current guild.
+        /// </summary>
+        /// <param name="ctx">The context of the command.</param>
+        /// <param name="limit">The new member limit to set the default to.</param>
         [SlashCommand("set", "Sets the default member limit for a temp vc for this guild")]
         public static async Task SetCreateAVcMemberLimit(InteractionContext ctx,
             [Option("member_limit", "The member limit to set the temp vc default to"), MinimumValue(0), MaximumValue(99)]
@@ -75,6 +98,10 @@ public class CreateAVcCommands : ApplicationCommandsModule
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command is not yet implemented."));
         }
         
+        /// <summary>
+        /// A command to reset the 'default_member_limit' channel for the current guild.
+        /// </summary>
+        /// <param name="ctx">The new bitrate to set the default to.</param>
         [SlashCommand("reset", "Resets the default member limit for a temp vc for this guild")]
         public static async Task ResetCreateAVcMemberLimit(InteractionContext ctx)
         {
@@ -92,9 +119,17 @@ public class CreateAVcCommands : ApplicationCommandsModule
         }
     }
 
+    /// <summary>
+    /// The class for handling the 'default_bitrate' commands for the current guild.
+    /// </summary>
     [SlashCommandGroup("default_bitrate", "The temp vc default bitrate commands")]
     public class DefaultBitrateCommands : ApplicationCommandsModule
     {
+        /// <summary>
+        /// A command to set the default bitrate of the 'create a VC' function to for the current guild.
+        /// </summary>
+        /// <param name="ctx">The context of the command.</param>
+        /// <param name="bitrate">The new bitrate to set the default to.</param>
         [SlashCommand("set", "Sets the default bitrate for a temp vc for this guild")]
         public static async Task SetCreateAVcBitrate(InteractionContext ctx,
             [Option("bitrate", "The bitrate to set the temp vc default to"), MinimumValue(8), MaximumValue(384)]
@@ -113,6 +148,10 @@ public class CreateAVcCommands : ApplicationCommandsModule
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command is not yet implemented."));
         }
         
+        /// <summary>
+        /// A command to reset the default bitrate for the 'create a vc' function for the current guild.
+        /// </summary>
+        /// <param name="ctx">The context of the command.</param>
         [SlashCommand("reset", "Resets the default bitrate for a temp vc for this guild")]
         public static async Task ResetCreateAVcMemberLimit(InteractionContext ctx)
         {
@@ -130,6 +169,10 @@ public class CreateAVcCommands : ApplicationCommandsModule
         }
     }
 
+    /// <summary>
+    /// A command to enable the 'create a VC' function for the current guild.
+    /// </summary>
+    /// <param name="ctx">The context of the command.</param>
     [SlashCommand("enable", "Enables the 'create a vc' functionality fot this guild")]
     public static async Task EnableCreateAVc(InteractionContext ctx)
     {
@@ -146,6 +189,10 @@ public class CreateAVcCommands : ApplicationCommandsModule
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("This command is not yet implemented."));
     }
     
+    /// <summary>
+    /// A command to disable the 'create a VC' function for the current guild.
+    /// </summary>
+    /// <param name="ctx">The context of the command.</param>
     [SlashCommand("disable", "Disables the 'create a vc' functionality fot this guild")]
     public static async Task DisableCreateAVc(InteractionContext ctx)
     {
