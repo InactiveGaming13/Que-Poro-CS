@@ -10,11 +10,11 @@
 
 
     <Target Name="CopyFiles" AfterTargets="AfterBuild">
-        <Copy SourceFiles=".env" DestinationFolder="$(OutputPath)"/>
+        <Copy SourceFiles=".env" DestinationFolder="$(OutputPath)" />
     </Target>
 
     <ItemGroup>
-      <PackageReference Include="DisCatSharp" Version="10.6.7" />
+      <PackageReference Include="DisCatSharp" Version="10.7.0-nightly-006" />
       <PackageReference Include="DisCatSharp.Analyzer.Roselyn" Version="6.2.5">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

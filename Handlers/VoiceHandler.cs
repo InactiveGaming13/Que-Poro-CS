@@ -30,14 +30,44 @@ public class LavalinkCfg
 [SlashCommandGroup("voice", "Voice commands")]
 public class VoiceCommands : ApplicationCommandsModule
 {
-    [SlashCommand("join", "Joins a Voice Channel")]
+    bool usingLavaLink = Environment.GetEnvironmentVariable("LAVALINK_HOST") != null && Environment.GetEnvironmentVariable("LAVALINK_PASSWORD") != null;
+    
+    [SlashCommand("join", "Joins a Voice Channel (defaults to your current channel)")]
     public async Task Join(InteractionContext ctx,
-        [Option("channel", "Channel to join"), ChannelTypes(ChannelType.Voice)] DiscordChannel channel = null!)
+        [Option("channel", "The specified channel to join"), ChannelTypes(ChannelType.Voice)] DiscordChannel? channel = null!)
     {
-        if (channel is null && ctx.Member.VoiceState is not null && ctx.Member.VoiceState.Channel is not null)
+        await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+
+        if (!usingLavaLink)
+        {
+            await ctx.EditResponseAsync(
+                new DiscordWebhookBuilder().WithContent("I am not currently configured for voice."));
+            return;
+        }
+
+        if (ctx.Member.VoiceState?.Channel == null!)
+        {
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You are not in a VC."));
+            return;
+        }
+        
+        if (channel is null && ctx.Member.VoiceState?.Channel != null!)
         {
             channel = ctx.Member.VoiceState.Channel;
         }
+
+        if (Convert.ToString(channel.Id) == Environment.GetEnvironmentVariable("TEMP_VC_ID"))
+        {
+            await ctx.EditResponseAsync(
+                new DiscordWebhookBuilder().WithContent("I am unable to join a 'Create A VC' channel."));
+            return;
+        }
+        
+        /*if (channel.Type != ChannelType.Voice || channel.Type != ChannelType.Stage)
+        {
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Not a valid voice channel."));
+            return;
+        }*/
 
         var lavalink = ctx.Client.GetLavalink();
         
@@ -48,7 +78,6 @@ public class VoiceCommands : ApplicationCommandsModule
             return;
         }
         
-        await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         if (!lavalink.ConnectedSessions.Any())
         {
             await ctx.EditResponseAsync(
@@ -58,12 +87,6 @@ public class VoiceCommands : ApplicationCommandsModule
 
         var session = lavalink.ConnectedSessions.Values.First();
 
-        /*if (channel.Type != ChannelType.Voice || channel.Type != ChannelType.Stage)
-        {
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Not a valid voice channel."));
-            return;
-        }*/
-
         await session.ConnectAsync(channel);
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Joined {channel.Mention}."));
     }
@@ -72,6 +95,14 @@ public class VoiceCommands : ApplicationCommandsModule
     public async Task Leave(InteractionContext ctx)
     {
         await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+        
+        if (!usingLavaLink)
+        {
+            await ctx.EditResponseAsync(
+                new DiscordWebhookBuilder().WithContent("I am not currently configured for voice."));
+            return;
+        }
+        
         var lavalink = ctx.Client.GetLavalink();
         
         if (!lavalink.ConnectedSessions.Any())
@@ -96,9 +127,18 @@ public class VoiceCommands : ApplicationCommandsModule
 
 public class VoiceHandler
 {
-    public static async Task SwitchChannel(InteractionContext ctx, DiscordChannel channel)
+    static bool usingLavaLink = Environment.GetEnvironmentVariable("LAVALINK_HOST") != null && Environment.GetEnvironmentVariable("LAVALINK_PASSWORD") != null;
+    
+    public static async Task SwitchChannel(InteractionContext ctx, DiscordChannel? channel)
     {
         await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+        
+        if (!usingLavaLink)
+        {
+            await ctx.EditResponseAsync(
+                new DiscordWebhookBuilder().WithContent("I am not currently configured for voice."));
+            return;
+        }
 
         var lavalink = ctx.Client.GetLavalink();
 
@@ -136,7 +176,12 @@ public class VoiceHandler
         {
             if (CreateAVcHandler.TempVcs.Contains(e.Before.Channel) && e.Before.Channel.Users.Count == 0)
             {
-                await CreateAVcHandler.RemoveTempVc(e);
+                if (Convert.ToString(e.After.ChannelId) == Environment.GetEnvironmentVariable("TEMP_VC_ID"))
+                {
+                    await e.Before.Channel.PlaceMemberAsync(e.After.Member);
+                    return;
+                }
+                await CreateAVcHandler.RemoveTempVc(e.Before.Channel, "being empty");
             }
             if (Convert.ToString(e.After.ChannelId) == Environment.GetEnvironmentVariable("TEMP_VC_ID"))
             {
@@ -149,7 +194,12 @@ public class VoiceHandler
         {
             if (CreateAVcHandler.TempVcs.Contains(e.Before.Channel) && e.Before.Channel.Users.Count == 0)
             {
-                await CreateAVcHandler.RemoveTempVc(e);
+                await CreateAVcHandler.RemoveTempVc(e.Before.Channel, "being empty");
+            }
+
+            if (CreateAVcHandler.TempVcs.Contains(e.Before.Channel) && e.Before.Channel.Users is [{ IsBot: true }])
+            {
+                await CreateAVcHandler.RemoveTempVc(e.Before.Channel, "being empty with a bot");
             }
         }
         
@@ -160,5 +210,10 @@ public class VoiceHandler
                 await CreateAVcHandler.CreateTempVc(e);
             }
         }
+    }
+
+    public static async Task VoiceChannelStatusUpdated(DiscordClient s, VoiceChannelStatusUpdateEventArgs e)
+    {
+        Console.WriteLine($"Status updated for {e.Channel.Name} to {e.Status}");
     }
 }
