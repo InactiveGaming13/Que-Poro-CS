@@ -438,7 +438,6 @@ public class MusicCommands : ApplicationCommandsModule
         public static async Task SetVolume(InteractionContext ctx,
             [Option("volume", "The volume to set the bot to"), MinimumValue(0), MaximumValue(200)] int vol)
         {
-            Console.WriteLine(vol);
             await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
             if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
             {
