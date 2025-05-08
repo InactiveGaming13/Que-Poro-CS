@@ -214,6 +214,7 @@ public class VoiceHandler
 
     public static async Task VoiceChannelStatusUpdated(DiscordClient s, VoiceChannelStatusUpdateEventArgs e)
     {
-        Console.WriteLine($"Status updated for {e.Channel.Name} to {e.Status}");
+        if (e.Status is not null && e.Status != "")
+            Console.WriteLine($"Status updated for {e.Channel.Name} to {e.Status}");
     }
 }
