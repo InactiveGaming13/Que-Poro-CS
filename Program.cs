@@ -21,15 +21,16 @@ internal class Program
         // Load the environment variables
         DotEnv.Load();
 
-        String? botToken = Environment.GetEnvironmentVariable("DISCORD_TOKEN");
-        String? lavalinkHost = Environment.GetEnvironmentVariable("LAVALINK_HOST");
-        String? lavalinkPort = Environment.GetEnvironmentVariable("LAVALINK_PORT");
-        String? lavalinkPassword = Environment.GetEnvironmentVariable("LAVALINK_PASSWORD");
+        string? botToken = Environment.GetEnvironmentVariable("DISCORD_TOKEN");
+        string? lavalinkHost = Environment.GetEnvironmentVariable("LAVALINK_HOST");
+        string? lavalinkPort = Environment.GetEnvironmentVariable("LAVALINK_PORT");
+        string? lavalinkPassword = Environment.GetEnvironmentVariable("LAVALINK_PASSWORD");
 
         LavalinkExtension? lavalink = null;
         LavalinkConfiguration? lavalinkConfiguration = null;
 
        bool usingLavalink = lavalinkHost != null && lavalinkPassword != null;
+       Environment.SetEnvironmentVariable("USING_LAVALINK", Convert.ToString(usingLavalink));
         
         // Check if the DISCORD_TOKEN variable exists and exit if it doesn't.
         if (botToken == null)
