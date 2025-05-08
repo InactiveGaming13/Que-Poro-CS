@@ -111,6 +111,8 @@ internal class Program
             Console.WriteLine("Bot is ready.");
         };
         
+        //await Database.Database.DatabaseThings();
+        
         // Connect to discord and stop the app from closing prematurely
         await discord.ConnectAsync();
         await Task.Delay(-1);
