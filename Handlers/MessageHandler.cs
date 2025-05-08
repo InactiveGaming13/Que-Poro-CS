@@ -50,13 +50,13 @@ public class MessageManager : ApplicationCommandsModule
             // DiscordUser discordUser = await ctx.Client.GetUserAsync(id);
             // \n{discordUser.Mention}
 
-            DiscordEmbedBuilder embedBuilder = new DiscordEmbedBuilder
+            DiscordEmbed embedBuilder = new DiscordEmbedBuilder
             {
                 Color = DiscordColor.Blue,
                 Title = $"Responses for {username} in {channelMention}",
                 Description = $"Not yet implemented..."
-            };
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embedBuilder.Build()));
+            }.Build();
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embedBuilder));
         }
 
         [SlashCommand("add", "Adds a response to a message")]
