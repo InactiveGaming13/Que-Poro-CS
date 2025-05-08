@@ -9,6 +9,9 @@ using DisCatSharp.Lavalink.Enums;
 
 namespace QuePoro.Handlers;
 
+/// <summary>
+/// The class for handling the music commands.
+/// </summary>
 [SlashCommandGroup("music", "Music commands")]
 public class MusicCommands : ApplicationCommandsModule
 {
@@ -68,38 +71,84 @@ public class MusicCommands : ApplicationCommandsModule
                 return;
             }
             
-            LavalinkTrack track = loadResult.LoadType switch
+            List<LavalinkTrack> queue = loadResult.LoadType switch
             {
-                LavalinkLoadResultType.Track => loadResult.GetResultAs<LavalinkTrack>(),
-                LavalinkLoadResultType.Playlist => loadResult.GetResultAs<LavalinkPlaylist>().Tracks.First(),
-                LavalinkLoadResultType.Search => loadResult.GetResultAs<List<LavalinkTrack>>().First(),
+                LavalinkLoadResultType.Track => loadResult.GetResultAs<List<LavalinkTrack>>(),
+                LavalinkLoadResultType.Playlist => loadResult.GetResultAs<LavalinkPlaylist>().Tracks,
+                LavalinkLoadResultType.Search => loadResult.GetResultAs<List<List<LavalinkTrack>>>().First(),
                 _ => throw new InvalidOperationException("Unexpected load result type.")
             };
 
-            if (force && ctx.Member.Permissions.HasPermission(Permissions.Administrator))
+            string AddExcessToQueue()
             {
-                await guildPlayer.PlayAsync(track);
-                await ctx.EditResponseAsync($"Forced [{guildPlayer.CurrentTrack.Info.Title}]({guildPlayer.CurrentTrack.Info.Uri}) by {guildPlayer.CurrentTrack.Info.Author}.");
-                return;
+                string added = "";
+                for (int i = 0; i < queue.Count -1; i++)
+                {
+                    if (force)
+                        guildPlayer.AddToQueueAt(i, queue[i]);
+                    else
+                        guildPlayer.AddToQueue(queue[i]);
+                    
+                    added += $"{queue[i].Info.Title} by {queue[i].Info.Author}\n"; 
+                }
+
+                return added;
             }
 
-            if (force && !ctx.Member.Permissions.HasPermission(Permissions.Administrator))
+            switch (force)
             {
-                guildPlayer.AddToQueue(track);
-                await ctx.EditResponseAsync($"Added [{track.Info.Title}]({track.Info.Uri}) by {track.Info.Author} to the queue (you lack permissions to force play).");
-                return;
+                case true when ctx.Member.Permissions.HasPermission(Permissions.Administrator):
+                {
+                    await guildPlayer.PlayAsync(queue[0]);
+                    queue.Remove(queue.First());
+                    AddExcessToQueue();
+                    await ctx.EditResponseAsync($"Forced [{guildPlayer.CurrentTrack.Info.Title}]({guildPlayer.CurrentTrack.Info.Uri}) by {guildPlayer.CurrentTrack.Info.Author}.");
+                    return;
+                }
+                case true when !ctx.Member.Permissions.HasPermission(Permissions.Administrator):
+                    string added = AddExcessToQueue();
+
+                    if (queue.Count >= 2)
+                    {
+                        DiscordEmbed embedBuilder = new DiscordEmbedBuilder
+                        {
+                            Color = DiscordColor.Blue,
+                            Title = "Added playlist to the queue (You can't force play)",
+                            Description = added
+                        }.Build();
+                        await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embedBuilder));
+                        return;
+                    }
+                    await ctx.EditResponseAsync($"Added [{queue[0].Info.Title}]({queue[0].Info.Uri}) by {queue[0].Info.Author} to the queue (you can't force play).");
+                    return;
             }
 
             if (guildPlayer.CurrentTrack != null)
             {
-                guildPlayer.AddToQueue(track);
-                await ctx.EditResponseAsync($"Added [{track.Info.Title}]({track.Info.Uri}) by {track.Info.Author} to the queue.");
+                string added = AddExcessToQueue();
+
+                if (queue.Count >= 2)
+                {
+                    DiscordEmbed embedBuilder = new DiscordEmbedBuilder
+                    {
+                        Color = DiscordColor.Blue,
+                        Title = "Added playlist to the queue",
+                        Description = added
+                    }.Build();
+                    await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embedBuilder));
+                    return;
+                }
+                
+                await ctx.EditResponseAsync($"Added [{queue[0].Info.Title}]({queue[0].Info.Uri}) by {queue[0].Info.Author} to the queue.");
                 return;
             }
 
-            await guildPlayer.PlayAsync(track);
+            await guildPlayer.PlayAsync(queue[0]);
 
-            await ctx.EditResponseAsync($"Now playing [{guildPlayer.CurrentTrack.Info.Title}]({guildPlayer.CurrentTrack.Info.Uri}) by {track.Info.Author}.");
+            queue.Remove(queue.First());
+            AddExcessToQueue();
+
+            await ctx.EditResponseAsync($"Now playing [{guildPlayer.CurrentTrack.Info.Title}]({guildPlayer.CurrentTrack.Info.Uri}) by {guildPlayer.CurrentTrack.Info.Author}.");
         }
         
         await GetResult(track);
@@ -183,8 +232,9 @@ public class MusicCommands : ApplicationCommandsModule
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Resumed [{guildPlayer.CurrentTrack.Info.Title}]({guildPlayer.CurrentTrack.Info.Uri}) by {guildPlayer.CurrentTrack.Info.Author}."));
     }
     
-    [SlashCommand("stop", "Stops the song and clears the queue")]
-    public async Task StopTrack(InteractionContext ctx)
+    [SlashCommand("stop", "Stops the current song")]
+    public async Task StopTrack(InteractionContext ctx,
+        [Option("clear_queue", "Clears the queue")] bool clear = false)
     {
         await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
@@ -211,12 +261,19 @@ public class MusicCommands : ApplicationCommandsModule
 
         if (!guildPlayer.Queue.Any() && guildPlayer.CurrentTrack == null)
         {
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("The queue is already clear."));
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("There is nothing to stop."));
         }
 
-        guildPlayer.ClearQueue();
+        string response = "Stopped the current song";
+
+        if (clear)
+        {
+            guildPlayer.ClearQueue();
+            response += " and cleared the queue";
+        }
+        
         await guildPlayer.StopAsync();
-        await ctx.EditResponseAsync("Stopped the song and cleared the queue.");
+        await ctx.EditResponseAsync($"{response}.");
     }
     
     [SlashCommand("skip", "skips the current song")]
@@ -289,93 +346,124 @@ public class MusicCommands : ApplicationCommandsModule
         await ctx.EditResponseAsync($"Currently paused [{guildPlayer.CurrentTrack.Info.Title}]({guildPlayer.CurrentTrack.Info.Uri}) by {guildPlayer.CurrentTrack.Info.Author}.");
     }
 
-    [SlashCommand("queue", "Gets the current queue")]
-    public async Task GetQueue(InteractionContext ctx)
+    [SlashCommandGroup("queue", "The queue commands")]
+    public class MusicQueueCommands : ApplicationCommandsModule
     {
-        await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
-        if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
+        [SlashCommand("list", "Lists the current queue")]
+        public async Task GetQueue(InteractionContext ctx)
         {
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You are not in a voice channel."));
-            return;
+            await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+            if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You are not in a voice channel."));
+                return;
+            }
+
+            var lavalink = ctx.Client.GetLavalink();
+            var guildPlayer = lavalink.GetGuildPlayer(ctx.Guild);
+
+            if (guildPlayer == null)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("I am not in a voice channel."));
+                return;
+            }
+
+            string title = guildPlayer.Queue.Count == 0
+                ? "The queue is empty"
+                : $"The current queue for {ctx.Guild.Name}";
+
+            string queue = guildPlayer.Queue.Aggregate("", (current, track) => current + $"{track.Info.Title} by {track.Info.Author}\n");
+
+            DiscordEmbed embedBuilder = new DiscordEmbedBuilder
+            {
+                Color = DiscordColor.Red,
+                Title = title,
+                Description = queue
+            }.Build();
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embedBuilder));
         }
 
-        var lavalink = ctx.Client.GetLavalink();
-        var guildPlayer = lavalink.GetGuildPlayer(ctx.Guild);
-
-        if (guildPlayer == null)
+        [SlashCommand("clear", "Clears the current queue")]
+        public static async Task ClearQueue(InteractionContext ctx)
         {
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("I am not in a voice channel."));
-            return;
-        }
+            await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+            if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You are not in a voice channel."));
+                return;
+            }
 
-        if (guildPlayer.Queue.Count == 0)
-        {
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("The current queue is empty!"));
-            return;
-        }
-        
-        string queue = "The current queue:\n";
-        
-        foreach (var song in guildPlayer.Queue)
-        {
-            queue += $"{song.Info.Title} by {song.Info.Author}\n";
-        }
+            var lavalink = ctx.Client.GetLavalink();
+            var guildPlayer = lavalink.GetGuildPlayer(ctx.Guild);
 
-        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent(queue));
+            if (guildPlayer == null)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("I am not in a voice channel."));
+                return;
+            }
+            
+            guildPlayer.ClearQueue();
+            await ctx.EditResponseAsync(
+                new DiscordWebhookBuilder().WithContent($"Cleared the queue for {ctx.Guild.Name}"));
+        }
     }
     
-    [SlashCommand("volume_get", "Gets the volume of the bot")]
-    public static async Task GetVolume(InteractionContext ctx)
+    [SlashCommandGroup("volume", "The volume control commands")]
+    public class MusicVolumeCommands : ApplicationCommandsModule
     {
-        await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
-        if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
+        [SlashCommand("get", "Gets the volume of the bot")]
+        public static async Task GetVolume(InteractionContext ctx)
         {
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You are not in a voice channel."));
-            return;
-        }
-
-        var lavalink = ctx.Client.GetLavalink();
-        var guildPlayer = lavalink.GetGuildPlayer(ctx.Guild);
-
-        if (guildPlayer == null)
-        {
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("I am not in a voice channel."));
-            return;
-        }
-
-        await ctx.EditResponseAsync(
-            new DiscordWebhookBuilder().WithContent($"The current volume is {guildPlayer.Player.Volume}"));
-    }
-
-    [SlashCommand("volume_set", "Sets the volume of the bot")]
-    public static async Task SetVolume(InteractionContext ctx,
-        [Option("volume", "The volume to set the bot to"), MinimumValue(0), MaximumValue(200)] int vol)
-    {
-        Console.WriteLine(vol);
-        await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
-        if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
-        {
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You are not in a voice channel."));
-            return;
-        }
-
-        var lavalink = ctx.Client.GetLavalink();
-        var guildPlayer = lavalink.GetGuildPlayer(ctx.Guild);
-
-        if (guildPlayer == null)
-        {
-            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("I am not in a voice channel."));
-            return;
-        }
-        
-        if (guildPlayer.Channel != ctx.Channel && !ctx.Member.Permissions.HasPermission(Permissions.MoveMembers))
-        {
+            await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+            if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You are not in a voice channel."));
+                return;
+            }
+    
+            var lavalink = ctx.Client.GetLavalink();
+            var guildPlayer = lavalink.GetGuildPlayer(ctx.Guild);
+    
+            if (guildPlayer == null)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("I am not in a voice channel."));
+                return;
+            }
+    
             await ctx.EditResponseAsync(
-                new DiscordWebhookBuilder().WithContent("You are not in my vc and you lack permission to move me."));
-            return;
+                new DiscordWebhookBuilder().WithContent($"The current volume is {guildPlayer.Player.Volume}"));
         }
-
-        await guildPlayer.SetVolumeAsync(vol);
-        await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Set the volume to {vol}."));
+    
+        [SlashCommand("set", "Sets the volume of the bot")]
+        public static async Task SetVolume(InteractionContext ctx,
+            [Option("volume", "The volume to set the bot to"), MinimumValue(0), MaximumValue(200)] int vol)
+        {
+            Console.WriteLine(vol);
+            await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+            if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You are not in a voice channel."));
+                return;
+            }
+    
+            var lavalink = ctx.Client.GetLavalink();
+            var guildPlayer = lavalink.GetGuildPlayer(ctx.Guild);
+    
+            if (guildPlayer == null)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("I am not in a voice channel."));
+                return;
+            }
+            
+            if (guildPlayer.Channel != ctx.Channel && !ctx.Member.Permissions.HasPermission(Permissions.MoveMembers))
+            {
+                await ctx.EditResponseAsync(
+                    new DiscordWebhookBuilder().WithContent("You are not in my vc and you lack permission to move me."));
+                return;
+            }
+    
+            await guildPlayer.SetVolumeAsync(vol);
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Set the volume to {vol}."));
+        }
     }
 }
