@@ -308,8 +308,9 @@ public class MusicCommands : ApplicationCommandsModule
             return;
         }
 
+        LavalinkTrack nextTrack = guildPlayer.Queue.First();
         await guildPlayer.SkipAsync();
-        await ctx.EditResponseAsync($"Skipped to [{guildPlayer.CurrentTrack.Info.Title}]({guildPlayer.CurrentTrack.Info.Uri}) by {guildPlayer.CurrentTrack.Info.Author}.");
+        await ctx.EditResponseAsync($"Skipped to [{nextTrack.Info.Title}]({nextTrack.Info.Uri}) by {nextTrack.Info.Author}.");
     }
     
     [SlashCommand("currently_playing", "Gets the current song")]
@@ -405,6 +406,41 @@ public class MusicCommands : ApplicationCommandsModule
             guildPlayer.ClearQueue();
             await ctx.EditResponseAsync(
                 new DiscordWebhookBuilder().WithContent($"Cleared the queue for {ctx.Guild.Name}"));
+        }
+
+        [SlashCommand("shuffle", "Shuffles the current queue")]
+        public static async Task ShuffleQueue(InteractionContext ctx)
+        {
+            await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+            if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You are not in a voice channel."));
+                return;
+            }
+
+            var lavalink = ctx.Client.GetLavalink();
+            var guildPlayer = lavalink.GetGuildPlayer(ctx.Guild);
+
+            if (guildPlayer == null)
+            {
+                await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("I am not in a voice channel."));
+                return;
+            }
+            
+            guildPlayer.ShuffleQueue();
+            string title = guildPlayer.Queue.Count == 0
+                ? "The queue is empty"
+                : $"The current queue for {ctx.Guild.Name} (shuffled)";
+
+            string queue = guildPlayer.Queue.Aggregate("", (current, track) => current + $"{track.Info.Title} by {track.Info.Author}\n");
+
+            DiscordEmbed embedBuilder = new DiscordEmbedBuilder
+            {
+                Color = DiscordColor.Red,
+                Title = title,
+                Description = queue
+            }.Build();
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embedBuilder));
         }
     }
     
