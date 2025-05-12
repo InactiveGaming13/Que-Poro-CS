@@ -3,5 +3,7 @@ obj/
 /packages/
 riderModule.iml
 /_ReSharper.Caches/
+.idea
 .env
 Config/BackupConfig.json
+/Que-Poro-CS.sln.DotSettings.user

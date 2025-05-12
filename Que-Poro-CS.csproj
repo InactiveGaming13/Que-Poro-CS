@@ -3,28 +3,30 @@
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <TargetFramework>net8.0</TargetFramework>
-        <RootNamespace>Que_Poro_CS</RootNamespace>
+        <RootNamespace>QuePoro</RootNamespace>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
 
     <Target Name="CopyFiles" AfterTargets="AfterBuild">
-        <Copy SourceFiles=".env" DestinationFolder="$(OutputPath)"/>
+        <Copy SourceFiles=".env" DestinationFolder="$(OutputPath)" />
     </Target>
 
     <ItemGroup>
-      <PackageReference Include="DisCatSharp" Version="10.7.0-nightly-002" />
+      <PackageReference Include="DisCatSharp" Version="10.7.0-nightly-006" />
       <PackageReference Include="DisCatSharp.Analyzer.Roselyn" Version="6.2.5">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
-      <PackageReference Include="DisCatSharp.ApplicationCommands" Version="10.7.0-nightly-002" />
-      <PackageReference Include="DisCatSharp.Common" Version="10.7.0-nightly-002" />
-      <PackageReference Include="DisCatSharp.Interactivity" Version="10.7.0-nightly-002" />
-      <PackageReference Include="DisCatSharp.Lavalink" Version="10.7.0-nightly-002" />
-      <PackageReference Include="DisCatSharp.VoiceNext.Natives" Version="10.7.0-nightly-002" />
+      <PackageReference Include="DisCatSharp.ApplicationCommands" Version="10.6.7" />
+      <PackageReference Include="DisCatSharp.Lavalink" Version="10.6.7" />
       <PackageReference Include="dotenv.net" Version="3.2.1" />
+      <PackageReference Include="Npgsql" Version="9.0.3" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Database\Types\" />
     </ItemGroup>
 
 </Project>
