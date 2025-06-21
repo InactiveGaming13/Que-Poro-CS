@@ -1,6 +1,6 @@
 ﻿namespace QuePoro.Database.Handlers;
 
-public class BaseHandler
+public class Config
 {
     
 }

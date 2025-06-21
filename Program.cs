@@ -6,6 +6,8 @@ using DisCatSharp.Lavalink;
 using DisCatSharp.Net;
 using dotenv.net;
 using QuePoro.Handlers;
+using QuePoro.Database.Handlers;
+using QuePoro.Database.Types;
 
 namespace QuePoro;
 
@@ -63,7 +65,8 @@ internal class Program
                 Password = lavalinkPassword,
                 RestEndpoint = endpoint,
                 SocketEndpoint = endpoint,
-                EnableBuiltInQueueSystem = true
+                EnableBuiltInQueueSystem = true,
+                DefaultVolume = 10
             };
 
             // Enable voice for the bot
@@ -107,13 +110,12 @@ internal class Program
                 }
             }
             else
-                Console.WriteLine("Not using lavalink");
+                Console.WriteLine("Lavalink is disabled");
+            
             Console.WriteLine("Bot is ready.");
         };
         
-        //await Database.Database.DatabaseThings();
-        
-        // Connect to discord and stop the app from closing prematurely
+        // Connect to discord and stop the app from closing prematurely.
         await discord.ConnectAsync();
         await Task.Delay(-1);
     }

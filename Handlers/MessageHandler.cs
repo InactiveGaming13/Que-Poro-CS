@@ -188,14 +188,14 @@ public static class MessageHandler
     public static Task MessageDeleted(DiscordClient s, MessageDeleteEventArgs e)
     {
         Console.WriteLine(
-            $"{e.Message.Author} deleted a message in Guild: {e.Guild.Name} in Channel: {e.Channel.Name}");
+            $"{e.Message.Author.Username} deleted a message in Guild: {e.Guild.Name} in Channel: {e.Channel.Name}");
         return Task.CompletedTask;
     }
 
     public static Task MessageUpdated(DiscordClient s, MessageUpdateEventArgs e)
     {
         Console.WriteLine(
-            $"{e.Message.Author} updated a message in Guild: {e.Guild.Name} in Channel: {e.Channel.Name}");
+            $"{e.Message.Author.Username} updated a message in Guild: {e.Guild.Name} in Channel: {e.Channel.Name}");
         return Task.CompletedTask;
     }
 
