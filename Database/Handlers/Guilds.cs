@@ -1,4 +1,5 @@
 ﻿using Npgsql;
+using QuePoro.Database.Types;
 
 namespace QuePoro.Database.Handlers;
 
@@ -103,5 +104,42 @@ public class Guilds
                 Console.WriteLine("Unexpected Postgres Error");
             }
         }
+    }
+    
+    public static async Task<GuildRow?> GetGuild(ulong id)
+    {
+        string query = "SELECT * FROM guilds WHERE id=$1";
+
+        await using NpgsqlCommand command = DataSource.CreateCommand(query);
+        command.Parameters.AddWithValue(id);
+            
+        await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            ulong phraseId = (ulong)reader.GetInt64(reader.GetOrdinal("id"));
+            DateTime createdAt = reader.GetDateTime(reader.GetOrdinal("created_at"));
+            string name = reader.GetString(reader.GetOrdinal("name"));
+            bool tracked = reader.GetBoolean(reader.GetOrdinal("tracked"));
+            ulong tempVcChannel = (ulong)reader.GetInt64(reader.GetOrdinal("temp_vc_channel"));
+            int tempVcMemberDefault = reader.GetInt32(reader.GetOrdinal("temp_vc_member_default"));
+            int tempVcBitrateDefault = reader.GetInt32(reader.GetOrdinal("temp_vc_bitrate_default"));
+            ulong robloxAlertChannel = (ulong)reader.GetInt64(reader.GetOrdinal("temp_vc_channel"));
+            int robloxAlertInterval = reader.GetInt32(reader.GetOrdinal("temp_vc_member_default"));
+                
+            return new GuildRow
+            {
+                Id = phraseId,
+                CreatedAt = createdAt,
+                Name = name,
+                Tracked = tracked,
+                TempVcChannel = tempVcChannel,
+                TempVcMemberDefault = tempVcMemberDefault,
+                TempVcBitrateDefault = tempVcBitrateDefault,
+                RobloxAlertChannel = robloxAlertChannel,
+                RobloxAlertInterval = robloxAlertInterval
+            };
+        }
+
+        return null;
     }
 }

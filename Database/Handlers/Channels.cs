@@ -1,4 +1,5 @@
 ﻿using Npgsql;
+using QuePoro.Database.Types;
 
 namespace QuePoro.Database.Handlers;
 
@@ -93,5 +94,38 @@ public static class Channels
                 Console.WriteLine("Unexpected Postgres Error");
             }
         }
+    }
+
+    public static async Task<ChannelRow?> GetChannel(ulong id)
+    {
+        string query = "SELECT * FROM banned_phrases WHERE id=$1";
+
+        await using NpgsqlCommand command = DataSource.CreateCommand(query);
+        command.Parameters.AddWithValue(id);
+            
+        await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            ulong phraseId = (ulong)reader.GetInt64(reader.GetOrdinal("id"));
+            DateTime createdAt = reader.GetDateTime(reader.GetOrdinal("created_at"));
+            string name = reader.GetString(reader.GetOrdinal("name"));
+            bool tracked = reader.GetBoolean(reader.GetOrdinal("tracked"));
+            ulong guildId = (ulong)reader.GetInt64(reader.GetOrdinal("guild_id"));
+            string description = reader.GetString(reader.GetOrdinal("description"));
+            int messages = reader.GetInt32(reader.GetOrdinal("messages"));
+                
+            return new ChannelRow
+            {
+                Id = phraseId,
+                CreatedAt = createdAt,
+                Name = name,
+                Tracked = tracked,
+                GuildId = guildId,
+                Description = description,
+                Messages = messages
+            };
+        }
+
+        return null;
     }
 }

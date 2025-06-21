@@ -113,7 +113,7 @@ public static class BannedPhrases
             return null;
         }
 
-        public static async Task<BannedPhrase?> GetPhrase(Guid id)
+        public static async Task<BannedPhraseRow?> GetPhrase(Guid id)
         {
             string query = "SELECT * FROM banned_phrases WHERE id=$1";
 
@@ -126,23 +126,15 @@ public static class BannedPhrases
                 Guid phraseId = reader.GetGuid(reader.GetOrdinal("id"));
                 DateTime createdAt = reader.GetDateTime(reader.GetOrdinal("created_at"));
                 long createdBy = reader.GetInt64(reader.GetOrdinal("created_by"));
-                long? guildId = null;
-                try
-                {
-                    guildId = reader.GetInt64(reader.GetOrdinal("guild_id"));
-                }
-                catch (InvalidCastException)
-                {}
                 int severity = reader.GetInt32(reader.GetOrdinal("severity"));
                 string bannedPhrase = reader.GetString(reader.GetOrdinal("phrase"));
                 bool enabled = reader.GetBoolean(reader.GetOrdinal("enabled"));
                 
-                return new BannedPhrase
+                return new BannedPhraseRow
                 {
                     Id = phraseId,
                     CreatedAt = createdAt,
                     CreatedBy = createdBy,
-                    GuildId = guildId,
                     Severity = severity,
                     Phrase = bannedPhrase,
                     Enabled = enabled
