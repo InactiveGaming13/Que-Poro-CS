@@ -40,15 +40,15 @@ CREATE TABLE IF NOT EXISTS user_stats
 
 CREATE TABLE IF NOT EXISTS guilds
 (
-    id                      NUMERIC PRIMARY KEY NOT NULL,
-    created_at              TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    name                    TEXT                NOT NULL,
-    tracked                 BOOLEAN             NOT NULL DEFAULT TRUE,
-    temp_vc_channel         NUMERIC UNIQUE,
-    temp_vc_member_default  INTEGER             NOT NULL DEFAULT 5,
-    temp_vc_bitrate_default INTEGER             NOT NULL DEFAULT 64,
-    roblox_alert_channel    NUMERIC UNIQUE,
-    roblox_alert_interval   INTEGER
+    id                           NUMERIC PRIMARY KEY NOT NULL,
+    created_at                   TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    name                         TEXT                NOT NULL,
+    tracked                      BOOLEAN             NOT NULL DEFAULT TRUE,
+    temp_vc_channel              NUMERIC UNIQUE,
+    temp_vc_default_member_limit INTEGER             NOT NULL DEFAULT 5,
+    temp_vc_default_bitrate      INTEGER             NOT NULL DEFAULT 64,
+    roblox_alert_channel         NUMERIC UNIQUE,
+    roblox_alert_interval        INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS channels
@@ -82,13 +82,18 @@ CREATE TABLE IF NOT EXISTS temp_vcs
 
 CREATE TABLE IF NOT EXISTS config
 (
-    status_type          INTEGER,
-    status_message       TEXT,
-    temp_vc_enabled      BOOLEAN NOT NULL DEFAULT TRUE,
-    roblox_alert_enabled BOOLEAN NOT NULL DEFAULT TRUE,
-    replies_enabled      BOOLEAN NOT NULL DEFAULT TRUE,
-    testers_enabled      BOOLEAN NOT NULL DEFAULT TRUE,
-    shutdown_message     NUMERIC
+    last_modified                TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    status_type                  INTEGER   NOT NULL DEFAULT 0,
+    status_message               TEXT      NOT NULL DEFAULT '',
+    log_channel                  NUMERIC   NOT NULL DEFAULT 0,
+    temp_vc_enabled              BOOLEAN   NOT NULL DEFAULT TRUE,
+    temp_vc_default_member_limit INTEGER   NOT NULL DEFAULT 5,
+    temp_vc_default_bitrate      INTEGER   NOT NULL DEFAULT 64000,
+    roblox_alerts_enabled        BOOLEAN   NOT NULL DEFAULT TRUE,
+    replies_enabled              BOOLEAN   NOT NULL DEFAULT TRUE,
+    testers_enabled              BOOLEAN   NOT NULL DEFAULT FALSE,
+    shutdown_channel             NUMERIC   NOT NULL DEFAULT 0,
+    shutdown_message             NUMERIC   NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS media
