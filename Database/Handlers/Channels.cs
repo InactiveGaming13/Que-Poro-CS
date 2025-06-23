@@ -6,7 +6,7 @@ namespace QuePoro.Database.Handlers;
 
 public static class Channels
 {
-    public static async Task AddChannel(ulong id, ulong guildId, string name, string description, int messages = 0)
+    public static async Task AddChannel(ulong id, ulong guildId, string name, string? description = null, int messages = 0)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using var command = connection.CreateCommand();
@@ -19,7 +19,9 @@ public static class Channels
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
         command.Parameters.Add(new NpgsqlParameter("guildId", NpgsqlDbType.Numeric) { Value = (long)guildId });
         command.Parameters.Add(new NpgsqlParameter("name", NpgsqlDbType.Text) { Value = name });
-        command.Parameters.Add(new NpgsqlParameter("description", NpgsqlDbType.Text) { Value = description });
+        command.Parameters.Add(description is null
+            ? new NpgsqlParameter("description", NpgsqlDbType.Text) { Value = DBNull.Value }
+            : new NpgsqlParameter("description", NpgsqlDbType.Text) { Value = description });
         command.Parameters.Add(new NpgsqlParameter("messages", NpgsqlDbType.Integer) { Value = messages });
             
         try
@@ -46,12 +48,9 @@ public static class Channels
         {
             await command.ExecuteNonQueryAsync();
         }
-        catch (PostgresException e)
+        catch (Exception e)
         {
-            if (e.ErrorCode != -2147467259)
-            {
-                Console.WriteLine("Unexpected Postgres Error");
-            }
+            Console.WriteLine(e);
         }
     }
 
@@ -102,12 +101,9 @@ public static class Channels
         {
             await command.ExecuteNonQueryAsync();
         }
-        catch (PostgresException e)
+        catch (Exception e)
         {
-            if (e.ErrorCode != -2147467259)
-            {
-                Console.WriteLine("Unexpected Postgres Error");
-            }
+            Console.WriteLine(e);
         }
     }
 
@@ -130,7 +126,16 @@ public static class Channels
                 string name = reader.GetString(reader.GetOrdinal("name"));
                 bool tracked = reader.GetBoolean(reader.GetOrdinal("tracked"));
                 ulong guildId = (ulong)reader.GetInt64(reader.GetOrdinal("guild_id"));
-                string description = reader.GetString(reader.GetOrdinal("description"));
+                string? description = null;
+                try
+                {
+                    description = reader.GetString(reader.GetOrdinal("description"));
+                }
+                catch (Exception)
+                {
+                    // ignored
+                }
+
                 int messages = reader.GetInt32(reader.GetOrdinal("messages"));
 
                 return new ChannelRow

@@ -2,6 +2,7 @@
 
 public class ConfigRow
 {
+    public required DateTime CreatedAt { get; set; }
     public required DateTime LastModified { get; set; }
     public required short StatusType { get; set; }
     public required string StatusMessage { get; set; }

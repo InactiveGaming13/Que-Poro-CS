@@ -7,32 +7,32 @@ namespace QuePoro.Database.Handlers;
 
 public static class Reactions
 {
-    /// <summary>
-    /// Adds a user emoji reaction to the database.
-    /// </summary>
-    /// <param name="userResponsibleId">The user who is adding the reaction.</param>
-    /// <param name="userReactsId">The user who is being affected by this command.</param>
-    /// <param name="emoji">The emoji to add to the user.</param>
-    public static async Task AddReaction(ulong userResponsibleId, ulong userReactsId, string emoji)
+    public static async Task AddReaction(ulong userResponsibleId, ulong userReactsId, string emoji,
+        string? triggerMessage = null, bool exactTrigger = false)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using var command = connection.CreateCommand();
         
         string query =
-            "INSERT INTO reactions (created_by, emoji_code, reacts_to) VALUES (@createdBy, @emojiCode, @reactsTo)";
+            "INSERT INTO reactions (created_by, emoji_code, reacts_to, trigger, exact_trigger) " +
+            "VALUES (@createdBy, @emojiCode, @reactsTo, @trigger, @exactTrigger)";
 
         command.CommandText = query;
-        command.Parameters.Add(new NpgsqlParameter("createdBy", NpgsqlDbType.Numeric) { Value = userResponsibleId });
+        command.Parameters.Add(new NpgsqlParameter("createdBy", NpgsqlDbType.Numeric) { Value = (long)userResponsibleId });
         command.Parameters.Add(new NpgsqlParameter("emojiCode", NpgsqlDbType.Text) { Value = emoji });
-        command.Parameters.Add(new NpgsqlParameter("reactsTo", NpgsqlDbType.Numeric) { Value = userReactsId });
+        command.Parameters.Add(new NpgsqlParameter("reactsTo", NpgsqlDbType.Numeric) { Value = (long)userReactsId });
+        command.Parameters.Add(triggerMessage is null ?
+            new NpgsqlParameter("trigger", NpgsqlDbType.Text) { Value = DBNull.Value } :
+            new NpgsqlParameter("trigger", NpgsqlDbType.Text) { Value = triggerMessage });
+        command.Parameters.Add(new NpgsqlParameter("exactTrigger", NpgsqlDbType.Boolean) { Value = exactTrigger });
         
         try
         {
             await command.ExecuteNonQueryAsync();
         }
-        catch (PostgresException e)
+        catch (Exception e)
         {
-            Console.WriteLine($"{e.ErrorCode} | {e.Message}");
+            Console.WriteLine(e);
         }
     }
 
@@ -55,9 +55,9 @@ public static class Reactions
         {
             await command.ExecuteNonQueryAsync();
         }
-        catch (PostgresException e)
+        catch (Exception e)
         {
-            Console.WriteLine($"{e.ErrorCode} | {e.Message}");
+            Console.WriteLine(e);
         }
     }
 
@@ -77,9 +77,9 @@ public static class Reactions
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("emojiCode", NpgsqlDbType.Text) { Value = emoji });
-        command.Parameters.Add(new NpgsqlParameter("reactsTo", NpgsqlDbType.Numeric) { Value = userId });
+        command.Parameters.Add(new NpgsqlParameter("reactsTo", NpgsqlDbType.Numeric) { Value = (long)userId });
 
-        return (Guid)command.ExecuteScalar()!;
+        return (Guid?)command.ExecuteScalar()!;
     }
     
     public static async Task<List<ReactionRow>> GetReactions(ulong userId)
@@ -91,20 +91,31 @@ public static class Reactions
             "SELECT * FROM reactions WHERE reacts_to=@reactsTo";
 
         command.CommandText = query;
-        command.Parameters.Add(new NpgsqlParameter("reactsTo", NpgsqlDbType.Numeric) { Value = userId });
+        command.Parameters.Add(new NpgsqlParameter("reactsTo", NpgsqlDbType.Numeric) { Value = (long)userId });
 
         List<ReactionRow> reactions = [];
         
         await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
+            string? triggerMessage = null;
+            try
+            {
+                triggerMessage = reader.GetString(reader.GetOrdinal("trigger"));
+            }
+            catch (Exception)
+            {
+                // ignore
+            }
             reactions.Add(new ReactionRow
             {
                 Id = reader.GetGuid(reader.GetOrdinal("id")),
                 CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
                 CreatedBy = (ulong)reader.GetInt64(reader.GetOrdinal("created_by")),
                 Emoji = reader.GetString(reader.GetOrdinal("emoji_code")),
-                UserId = (ulong)reader.GetInt64(reader.GetOrdinal("reacts_to"))
+                UserId = (ulong)reader.GetInt64(reader.GetOrdinal("reacts_to")),
+                TriggerMessage = triggerMessage,
+                ExactTrigger = reader.GetBoolean(reader.GetOrdinal("exact_trigger"))
             });
         }
 

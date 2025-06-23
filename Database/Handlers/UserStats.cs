@@ -29,9 +29,9 @@ public class UserStats
         {
             await command.ExecuteNonQueryAsync();
         }
-        catch (PostgresException e)
+        catch (Exception e)
         {
-            Console.WriteLine($"{e.ErrorCode} | {e.Message}");
+            Console.WriteLine(e);
         }
     }
     
@@ -40,7 +40,7 @@ public class UserStats
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using var command = connection.CreateCommand();
         
-        string query = $"SELECT * FROM user_stats WHERE id=@id";
+        string query = "SELECT * FROM user_stats WHERE id=@id";
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
@@ -81,39 +81,42 @@ public class UserStats
 
         if (sent != null)
         {
-            query += ", sent=@sent";
+            query += " sent=@sent,";
             command.Parameters.Add(new NpgsqlParameter("sent", NpgsqlDbType.Integer) { Value = sent });
         }
 
         if (deleted != null)
         {
-            query += ", deleted=@deleted";
+            query += " deleted=@deleted,";
             command.Parameters.Add(new NpgsqlParameter("deleted", NpgsqlDbType.Integer) { Value = deleted });
         }
 
         if (edited != null)
         {
-            query += ", edited=@edited";
+            query += " edited=@edited,";
             command.Parameters.Add(new NpgsqlParameter("edited", NpgsqlDbType.Integer) { Value = edited });
         }
 
         if (tempVcCreated != null)
         {
-            query += ", temp_vc_created=@tempVcCreated";
+            query += " temp_vc_created=@tempVcCreated,";
             command.Parameters.Add(new NpgsqlParameter("tempVcCreated", NpgsqlDbType.Integer) { Value = tempVcCreated });
         }
 
         if (modActions != null)
         {
-            query += ", mod_actions=@modActions";
+            query += " mod_actions=@modActions,";
             command.Parameters.Add(new NpgsqlParameter("modActions", NpgsqlDbType.Integer) { Value = modActions });
         }
 
         if (strikes != null)
         {
-            query += ", strikes=@strikes";
+            query += " strikes=@strikes";
             command.Parameters.Add(new NpgsqlParameter("strikes", NpgsqlDbType.Integer) { Value = strikes });
         }
+        
+        if (query.EndsWith(','))
+            query = query.Remove(query.Length - 1);
 
         query += " WHERE id=@id";
         
@@ -124,9 +127,9 @@ public class UserStats
         {
             await command.ExecuteNonQueryAsync();
         }
-        catch (PostgresException e)
+        catch (Exception e)
         {
-            Console.WriteLine($"{e.ErrorCode} | {e.Message}");
+            Console.WriteLine(e);
         }
     }
 }

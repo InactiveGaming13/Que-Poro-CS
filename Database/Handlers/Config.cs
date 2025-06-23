@@ -132,6 +132,7 @@ public class Config
         await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
+            DateTime createdAt = reader.GetDateTime(reader.GetOrdinal("created_at"));
             DateTime lastModified = reader.GetDateTime(reader.GetOrdinal("last_modified"));
             short statusType = reader.GetInt16(reader.GetOrdinal("status_type"));
             string statusMessage = reader.GetString(reader.GetOrdinal("status_message"));
@@ -147,6 +148,7 @@ public class Config
 
             return new ConfigRow
             {
+                CreatedAt = createdAt,
                 LastModified = lastModified,
                 StatusType = statusType,
                 StatusMessage = statusMessage,

@@ -27,15 +27,10 @@ public static class Guilds
         command.Parameters.Add(new NpgsqlParameter("tempVcDefaultBitrate", NpgsqlDbType.Integer) { Value = tempVcDefaultBitrate });
         command.Parameters.Add(new NpgsqlParameter("robloxAlertChannel", NpgsqlDbType.Numeric) { Value = (long)robloxAlertChannel });
         command.Parameters.Add(new NpgsqlParameter("robloxAlertInterval", NpgsqlDbType.Integer) { Value = robloxAlertInterval });
-
-        foreach (NpgsqlParameter parameter in command.Parameters)
-        {
-            Console.WriteLine($"{parameter.ParameterName}: {parameter.Value} | {parameter.NpgsqlDbType}");
-        }
         
         try
         {
-            int rows = await command.ExecuteNonQueryAsync();
+            await command.ExecuteNonQueryAsync();
         }
         catch (Exception e)
         {
@@ -57,12 +52,9 @@ public static class Guilds
         {
             await command.ExecuteNonQueryAsync();
         }
-        catch (PostgresException e)
+        catch (Exception e)
         {
-            if (e.ErrorCode != -2147467259)
-            {
-                Console.WriteLine("Unexpected Postgres Error");
-            }
+            Console.WriteLine(e);
         }
     }
 
@@ -109,12 +101,9 @@ public static class Guilds
         {
             await command.ExecuteNonQueryAsync();
         }
-        catch (PostgresException e)
+        catch (Exception e)
         {
-            if (e.ErrorCode != -2147467259)
-            {
-                Console.WriteLine("Unexpected Postgres Error");
-            }
+            Console.WriteLine(e);
         }
     }
     

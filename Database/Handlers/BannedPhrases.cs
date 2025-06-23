@@ -112,7 +112,7 @@ public static class BannedPhrases
             command.CommandText = query;
             command.Parameters.AddWithValue(phrase);
 
-            return (Guid)command.ExecuteScalar()!;
+            return (Guid?)command.ExecuteScalar()!;
         }
 
         public static async Task<BannedPhraseRow?> GetPhrase(Guid id)

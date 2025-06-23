@@ -21,21 +21,24 @@ CREATE TABLE IF NOT EXISTS users
     global_name TEXT                NOT NULL,
     admin       BOOLEAN             NOT NULL DEFAULT FALSE,
     replied_to  BOOLEAN             NOT NULL DEFAULT TRUE,
+    reacted_to  BOOLEAN             NOT NULL DEFAULT TRUE,
     tracked     BOOLEAN             NOT NULL DEFAULT TRUE,
     banned      BOOLEAN             NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS user_stats
 (
-    id              NUMERIC NOT NULL
+    id              NUMERIC   NOT NULL
         CONSTRAINT user_id_fk
             REFERENCES users,
-    sent            INTEGER NOT NULL DEFAULT 0,
-    deleted         INTEGER NOT NULL DEFAULT 0,
-    edited          INTEGER NOT NULL DEFAULT 0,
-    temp_vc_created INTEGER NOT NULL DEFAULT 0,
-    mod_actions     INTEGER NOT NULL DEFAULT 0,
-    strikes         INTEGER NOT NULL DEFAULT 0
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_modified   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    sent            INTEGER   NOT NULL DEFAULT 0,
+    deleted         INTEGER   NOT NULL DEFAULT 0,
+    edited          INTEGER   NOT NULL DEFAULT 0,
+    temp_vc_created INTEGER   NOT NULL DEFAULT 0,
+    mod_actions     INTEGER   NOT NULL DEFAULT 0,
+    strikes         INTEGER   NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS guilds
@@ -44,11 +47,11 @@ CREATE TABLE IF NOT EXISTS guilds
     created_at                   TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
     name                         TEXT                NOT NULL,
     tracked                      BOOLEAN             NOT NULL DEFAULT TRUE,
-    temp_vc_channel              NUMERIC UNIQUE,
+    temp_vc_channel              NUMERIC             NOT NULL DEFAULT 0,
     temp_vc_default_member_limit INTEGER             NOT NULL DEFAULT 5,
     temp_vc_default_bitrate      INTEGER             NOT NULL DEFAULT 64,
-    roblox_alert_channel         NUMERIC UNIQUE,
-    roblox_alert_interval        INTEGER
+    roblox_alert_channel         NUMERIC             NOT NULL DEFAULT 0,
+    roblox_alert_interval        INTEGER             NOT NULL DEFAULT 60
 );
 
 CREATE TABLE IF NOT EXISTS channels
@@ -82,6 +85,7 @@ CREATE TABLE IF NOT EXISTS temp_vcs
 
 CREATE TABLE IF NOT EXISTS config
 (
+    created_at                   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_modified                TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status_type                  INTEGER   NOT NULL DEFAULT 0,
     status_message               TEXT      NOT NULL DEFAULT '',
@@ -132,20 +136,26 @@ CREATE TABLE IF NOT EXISTS banned_phrase_channels
 
 CREATE TABLE IF NOT EXISTS reactions
 (
-    id         uuid PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
-    created_at TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_by NUMERIC          NOT NULL
+    id            uuid PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
+    created_at    TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by    NUMERIC          NOT NULL
         CONSTRAINT created_by_id_fk
             REFERENCES users,
-    emoji_code TEXT             NOT NULL,
-    reacts_to  NUMERIC          NOT NULL
+    emoji_code    TEXT             NOT NULL,
+    reacts_to     NUMERIC          NOT NULL
         CONSTRAINT reacts_id_fk
-            REFERENCES users
+            REFERENCES users,
+    trigger       TEXT,
+    exact_trigger BOOLEAN          NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS responses
 (
     id             uuid PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
+    created_at     TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by     NUMERIC          NOT NULL
+        CONSTRAINT created_by_response_fk
+            REFERENCES users,
     user_id        NUMERIC
         CONSTRAINT user_id_response_fk
             REFERENCES users,

@@ -28,9 +28,9 @@ public static class Users
         {
             await command.ExecuteNonQueryAsync();
         }
-        catch (PostgresException e)
+        catch (Exception e)
         {
-            Console.WriteLine($"{e.ErrorCode} | {e.Message}");
+            Console.WriteLine(e);
         }
     }
 
@@ -48,9 +48,9 @@ public static class Users
         {
             await command.ExecuteNonQueryAsync();
         }
-        catch (PostgresException e)
+        catch (Exception e)
         {
-            Console.WriteLine($"{e.ErrorCode} | {e.Message}");
+            Console.WriteLine(e);
         }
     }
 
@@ -73,6 +73,7 @@ public static class Users
             string globalName = reader.GetString(reader.GetOrdinal("global_name"));
             bool admin = reader.GetBoolean(reader.GetOrdinal("admin"));
             bool repliedTo = reader.GetBoolean(reader.GetOrdinal("replied_to"));
+            bool reactedTo = reader.GetBoolean(reader.GetOrdinal("reacted_to"));
             bool tracked = reader.GetBoolean(reader.GetOrdinal("tracked"));
             bool banned = reader.GetBoolean(reader.GetOrdinal("banned"));
                 
@@ -84,6 +85,7 @@ public static class Users
                 GlobalName = globalName,
                 Admin = admin,
                 RepliedTo = repliedTo,
+                ReactedTo = reactedTo,
                 Tracked = tracked,
                 Banned = banned
             };
