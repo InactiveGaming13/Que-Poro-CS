@@ -20,44 +20,54 @@ public class ReactionCommands : ApplicationCommandsModule
         [Option("exact_trigger", "Whether the trigger message should equal the message content")]
         bool exactTrigger = false)
     {
-        DiscordEmoji discordEmoji;
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
-        DiscordEmoji.TryFromUnicode(emoji, out DiscordEmoji? global);
-        if (global is null)
+        
+        DiscordEmoji? discordEmoji = await EmojiHandler.GetEmoji(e.Client, emoji);
+        if (discordEmoji is null)
         {
-            DiscordEmoji.TryFromGuildEmote(e.Client, (ulong)Convert.ToInt64(emoji.Split(":")[2].Replace(">", "")),
-                out DiscordEmoji? guild);
-            if (guild is null)
-            {
-                await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                    "That is an invalid emoji!"));
-                return;
-            }
-            discordEmoji = guild;
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                "The provided emoji is invalid!"));
+            return;
         }
-        else
-            discordEmoji = global;
 
         UserRow? databaseUser = await Users.GetUser(e.UserId);
-        
-        if (user == e.User || user == null)
+
+        switch (user)
         {
-            await Reactions.AddReaction(e.User.Id, e.User.Id, discordEmoji.Name, triggerMessage, exactTrigger);
-            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Added {emoji} to your reactions."));
-            return;
+            case not null when user == e.User && triggerMessage is not null:
+                await Reactions.AddReaction(e.UserId, user.Id, discordEmoji.Name, triggerMessage, exactTrigger);
+                await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                    $"Added {emoji} with {(exactTrigger ? "exact" : "")} trigger message `{triggerMessage}`to your reactions."));
+                return;
+            
+            case not null when user == e.User && triggerMessage is null:
+                await Reactions.AddReaction(e.UserId, user.Id, discordEmoji.Name, triggerMessage, exactTrigger);
+                await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                    $"Added {emoji} to your reactions."));
+                return;
+                
+            case not null when user != e.User && triggerMessage is not null && databaseUser is { Admin: true }:
+                await Reactions.AddReaction(e.UserId, user.Id, discordEmoji.Name, triggerMessage, exactTrigger);
+                await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                    $"Added {emoji} with {(exactTrigger ? "exact" : "")} trigger message `{triggerMessage}`to {user.Mention} reactions."));
+                return;
+            
+            case not null when user != e.User && triggerMessage is null && databaseUser is { Admin: true }:
+                await Reactions.AddReaction(e.UserId, user.Id, discordEmoji.Name, triggerMessage, exactTrigger);
+                await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                    $"Added {emoji} to {user.Mention} reactions."));
+                return;
+            
+            case not null when user != e.User && databaseUser is { Admin: false }:
+                await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                    "You are not authorized to add reactions to other users."));
+                return;
+            
+            default:
+                await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                    "An unexpected error occured."));
+                return;
         }
-        
-        if (user != null && user != e.User && databaseUser is { Admin: true })
-        {
-            await Reactions.AddReaction(e.User.Id, user.Id, emoji, triggerMessage, exactTrigger);
-            await e.EditResponseAsync(
-                new DiscordWebhookBuilder().WithContent($"Added {emoji} to {user.Mention} reactions."));
-            return;
-        }
-        
-        if (user != null && user != e.User && databaseUser is { Admin: false })
-            await e.EditResponseAsync(
-                new DiscordWebhookBuilder().WithContent("You are not authorized to add a reaction to other users."));
     }
     
     [SlashCommand("remove", "Removes a Reaction from you or a specified user (admin)")]
@@ -77,39 +87,43 @@ public class ReactionCommands : ApplicationCommandsModule
         }
 
         UserRow? databaseUser = await Users.GetUser(e.UserId);
-        
-        if (user == e.User || user == null)
+        Guid? authorEmojiId = await Reactions.GetReactionId(e.UserId, discordEmoji.Name);
+        Guid? userEmojiId = user != null ? await Reactions.GetReactionId(user.Id, discordEmoji.Name) : null;
+
+        switch (user)
         {
-            Guid? emojiId = await Reactions.GetReactionId(e.UserId, discordEmoji.Name);
-            if (emojiId is null)
-            {
+            case not null when user == e.User && authorEmojiId is not null:
+                await Reactions.RemoveReaction((Guid)authorEmojiId);
+                await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                    $"Removed {emoji} from your reactions."));
+                return;
+            
+            case not null when user == e.User && authorEmojiId is null:
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                     "That reaction doesn't exist for you."));
                 return;
-            }
-            await Reactions.RemoveReaction((Guid)emojiId);
-            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Removed {emoji} from your reactions."));
-            return;
-        }
-        
-        if (user != null && user != e.User && databaseUser is { Admin: true })
-        {
-            Guid? emojiId = await Reactions.GetReactionId(user.Id, discordEmoji.Name);
-            if (emojiId is null)
-            {
+                
+            case not null when user != e.User && userEmojiId is not null && databaseUser is { Admin: true }:
+                await Reactions.RemoveReaction((Guid)userEmojiId);
+                await e.EditResponseAsync(
+                    new DiscordWebhookBuilder().WithContent($"Removed {emoji} from {user.Mention} reactions."));
+                return;
+            
+            case not null when user != e.User && userEmojiId is null && databaseUser is { Admin: true }:
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                     $"That reaction doesn't exist for **{user.GlobalName}**."));
                 return;
-            }
-            await Reactions.RemoveReaction((Guid)emojiId);
-            await e.EditResponseAsync(
-                new DiscordWebhookBuilder().WithContent($"Removed {emoji} from {user.Mention} reactions."));
-            return;
+            
+            case not null when user != e.User && databaseUser is { Admin: false }:
+                await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                    "You are not authorized to remove reactions from other users."));
+                return;
+            
+            default:
+                await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                    "An unexpected error occured."));
+                return;
         }
-        
-        if (user != null && user != e.User && databaseUser is { Admin: false })
-            await e.EditResponseAsync(
-                new DiscordWebhookBuilder().WithContent("You are not authorized to add a reaction to other users."));
     }
 
     [SlashCommand("list", "Lists the reactions for a specified user")]
@@ -119,7 +133,7 @@ public class ReactionCommands : ApplicationCommandsModule
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
 
-        List<ReactionRow> reactions = [];
+        List<ReactionRow> reactions;
         string title;
 
         switch (user)

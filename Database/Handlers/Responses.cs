@@ -14,7 +14,7 @@ public static class Responses
             return;
         
         await using NpgsqlConnection connection = await Database.GetConnection();
-        await using var command = connection.CreateCommand();
+        await using NpgsqlCommand command = connection.CreateCommand();
         
         string query =
             "INSERT INTO responses (created_by, user_id, channel_id, trigger, response, media_alias, media_category, " +
@@ -59,7 +59,7 @@ public static class Responses
     public static async Task RemoveResponse(Guid responseId)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
-        await using var command = connection.CreateCommand();
+        await using NpgsqlCommand command = connection.CreateCommand();
         
         string query =
             "DELETE FROM responses WHERE id=@id";
@@ -85,7 +85,7 @@ public static class Responses
     public static async Task<Guid?> GetResponseId(string trigger)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
-        await using var command = connection.CreateCommand();
+        await using NpgsqlCommand command = connection.CreateCommand();
         
         string query =
             "SELECT id FROM responses WHERE trigger=@trigger";
@@ -96,10 +96,94 @@ public static class Responses
         return (Guid)command.ExecuteScalar()!;
     }
     
+    public static async Task<ResponseRow?> GetResponse(Guid responseId)
+    {
+        await using NpgsqlConnection connection = await Database.GetConnection();
+        await using NpgsqlCommand command = connection.CreateCommand();
+        
+        string query =
+            "SELECT * FROM responses WHERE id=@id";
+
+        command.CommandText = query;
+        command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Uuid) { Value = responseId });
+        
+        await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            Guid id = reader.GetGuid(reader.GetOrdinal("id"));
+            DateTime createdAt = reader.GetDateTime(reader.GetOrdinal("created_at"));
+            ulong? userResponseId = null;
+            try
+            {
+                userResponseId = (ulong)reader.GetInt64(reader.GetOrdinal("reacts_to"));
+            }
+            catch (Exception)
+            {
+                // ignored
+            }
+            ulong? channelResponseId = null;
+            try
+            {
+                channelResponseId = (ulong)reader.GetInt64(reader.GetOrdinal("channel_id"));
+            }
+            catch (Exception)
+            {
+                // ignored
+            }
+            string triggerMessage = reader.GetString(reader.GetOrdinal("trigger"));
+            string? responseMessage = null;
+            try
+            {
+                responseMessage = reader.GetString(reader.GetOrdinal("response"));
+            }
+            catch (Exception)
+            {
+                // ignored
+            }
+            string? mediaAlias = null;
+            try
+            {
+                mediaAlias = reader.GetString(reader.GetOrdinal("media_alias"));
+            }
+            catch (Exception)
+            {
+                // ignored
+            }
+            string? mediaCategory = null;
+            try
+            {
+                mediaCategory = reader.GetString(reader.GetOrdinal("media_category"));
+            }
+            catch (Exception)
+            {
+                // ignored
+            }
+            bool exactTrigger = reader.GetBoolean(reader.GetOrdinal("exact"));
+            bool enabled = reader.GetBoolean(reader.GetOrdinal("enabled"));
+            
+            
+            return new ResponseRow
+            {
+                Id = id,
+                CreatedAt = createdAt,
+                UserId = userResponseId,
+                ChannelId = channelResponseId,
+                TriggerMessage = triggerMessage,
+                ResponseMessage = responseMessage,
+                MediaAlias = mediaAlias,
+                MediaCategory = mediaCategory,
+                ExactTrigger = exactTrigger,
+                Enabled = enabled
+            };
+        }
+
+        return null;
+    }
+    
     public static async Task<List<ResponseRow>> GetUserResponses(ulong userId)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
-        await using var command = connection.CreateCommand();
+        await using NpgsqlCommand command = connection.CreateCommand();
         
         string query =
             "SELECT * FROM responses WHERE user_id=@userId";
@@ -185,7 +269,7 @@ public static class Responses
     public static async Task<List<ResponseRow>> GetChannelResponses(ulong? channelId = null)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
-        await using var command = connection.CreateCommand();
+        await using NpgsqlCommand command = connection.CreateCommand();
         
         string query =
             "SELECT * FROM responses WHERE channel_id=@channelId";
@@ -273,7 +357,7 @@ public static class Responses
     public static async Task<List<ResponseRow>> GetGlobalResponses()
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
-        await using var command = connection.CreateCommand();
+        await using NpgsqlCommand command = connection.CreateCommand();
         
         string query =
             "SELECT * FROM responses WHERE channel_id=@null AND user_id=@null";

@@ -97,9 +97,10 @@ internal class Program
         appCommands.RegisterGlobalCommands<AdminCommands>();
         appCommands.RegisterGlobalCommands<ConfigCommands>();
         appCommands.RegisterGlobalCommands<CreateAVcCommands>();
-        appCommands.RegisterGlobalCommands<MessageManager>();
+        appCommands.RegisterGlobalCommands<MessageCommands>();
         appCommands.RegisterGlobalCommands<MusicCommands>();
         appCommands.RegisterGlobalCommands<ReactionCommands>();
+        appCommands.RegisterGlobalCommands<ResponseCommands>();
         appCommands.RegisterGlobalCommands<TempVcCommands>();
         if (config is { TestersEnabled: true })
             appCommands.RegisterGlobalCommands<TesterCommands>();
