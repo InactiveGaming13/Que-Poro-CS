@@ -3,6 +3,7 @@ using DisCatSharp.ApplicationCommands.Attributes;
 using DisCatSharp.ApplicationCommands.Context;
 using DisCatSharp.Entities;
 using DisCatSharp.Enums;
+using QuePoro.Database.Handlers;
 
 namespace QuePoro.Handlers;
 
@@ -89,11 +90,16 @@ public class AdminCommands : ApplicationCommandsModule
     public async Task ShutdownBot(InteractionContext ctx)
     {
         await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+        
         if (Convert.ToString(ctx.User.Id) == Environment.GetEnvironmentVariable("BOT_OWNER_ID"))
         {
             await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Shutting down..."));
             await ctx.Client.UpdateStatusAsync(new DiscordActivity(), UserStatus.Offline);
             await ctx.Client.DisconnectAsync();
+            
+            DiscordMessage message = await ctx.GetOriginalResponseAsync();
+            await Config.ModifyConfig(shutdownChannel: ctx.ChannelId, shutdownMessage: message.Id);
+            
             Environment.Exit(0);
         }
         await ctx.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You lack the permissions to run this command."));

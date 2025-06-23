@@ -1,50 +1,50 @@
 ﻿using Npgsql;
+using NpgsqlTypes;
 using QuePoro.Database.Types;
 
 namespace QuePoro.Database.Handlers;
 
 public static class Channels
 {
-    private static readonly NpgsqlDataSource DataSource = Database.GetDataSource();
-    
-    public static async Task AddChannel(ulong id, ulong guildId, string name, string description, int? messages = null)
+    public static async Task AddChannel(ulong id, ulong guildId, string name, string description, int messages = 0)
     {
-        messages ??= 0;
+        await using NpgsqlConnection connection = await Database.GetConnection();
+        await using var command = connection.CreateCommand();
         
-        const string query =
-            "INSERT INTO channels (id, guild_id, name, description, messages) VALUES ($1, $2, $3, $4, $5)";
-        await using var cmd = DataSource.CreateCommand(query);
-        cmd.Parameters.AddWithValue(id);
-        cmd.Parameters.AddWithValue(guildId);
-        cmd.Parameters.AddWithValue(name);
-        cmd.Parameters.AddWithValue(description);
-        cmd.Parameters.AddWithValue(messages);
+        string query =
+            "INSERT INTO channels (id, guild_id, name, description, messages) VALUES " + 
+            "(@id, @guildId, @name, @description, @messages)";
+
+        command.CommandText = query;
+        command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
+        command.Parameters.Add(new NpgsqlParameter("guildId", NpgsqlDbType.Numeric) { Value = (long)guildId });
+        command.Parameters.Add(new NpgsqlParameter("name", NpgsqlDbType.Text) { Value = name });
+        command.Parameters.Add(new NpgsqlParameter("description", NpgsqlDbType.Text) { Value = description });
+        command.Parameters.Add(new NpgsqlParameter("messages", NpgsqlDbType.Integer) { Value = messages });
             
         try
         {
-            await cmd.ExecuteNonQueryAsync();
+            await command.ExecuteNonQueryAsync();
         }
-        catch (PostgresException e)
+        catch (Exception e)
         {
-            if (e.ErrorCode != -2147467259)
-            {
-                Console.WriteLine("Unexpected Postgres Error");
-                return;
-            }
-                
-            Console.WriteLine($"{e.ErrorCode} | {e.Message}");
+            Console.WriteLine(e);
         }
     }
     
     public static async Task RemoveChannel(ulong id)
     {
-        const string query = "DELETE FROM channels WHERE id=$1";
-        await using var cmd = DataSource.CreateCommand(query);
-        cmd.Parameters.AddWithValue(id);
+        await using NpgsqlConnection connection = await Database.GetConnection();
+        await using var command = connection.CreateCommand();
+
+        string query = "DELETE FROM channels WHERE id=@id";
+
+        command.CommandText = query;
+        command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
             
         try
         {
-            await cmd.ExecuteNonQueryAsync();
+            await command.ExecuteNonQueryAsync();
         }
         catch (PostgresException e)
         {
@@ -60,32 +60,47 @@ public static class Channels
     {
         if (guildId == null && name == null && description == null && messages == null)
             return;
+        
+        await using NpgsqlConnection connection = await Database.GetConnection();
+        await using var command = connection.CreateCommand();
             
-        string query = "UPDATE banned_phrases SET";
+        string query = "UPDATE channels SET";
 
         if (guildId != null)
-            query += $" guild_id={guildId},";
+        {
+            query += " guild_id=@guildId,";
+            command.Parameters.Add(new NpgsqlParameter("guildId", NpgsqlDbType.Numeric) { Value = (long)guildId });
+        }
 
         if (name != null)
-            query += $" name='{name}',";
+        {
+            query += " name=@name,";
+            command.Parameters.Add(new NpgsqlParameter("name", NpgsqlDbType.Text) { Value = name });
+        }
 
         if (description != null)
-            query += $" description='{description}',";
+        {
+            query += " description=@description,";
+            command.Parameters.Add(new NpgsqlParameter("description", NpgsqlDbType.Text) { Value = description });
+        }
 
         if (messages != null)
-            query += $" messages={messages}";
+        {
+            query += " messages=@messages";
+            command.Parameters.Add(new NpgsqlParameter("messages", NpgsqlDbType.Integer) { Value = messages });
+        }
 
         if (query.EndsWith(','))
             query = query.Remove(query.Length - 1);
 
-        query += " WHERE id=$1";
-            
-        await using var cmd = DataSource.CreateCommand(query);
-        cmd.Parameters.AddWithValue(id);
+        query += " WHERE id=@id";
+
+        command.CommandText = query;
+        command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
             
         try
         {
-            await cmd.ExecuteNonQueryAsync();
+            await command.ExecuteNonQueryAsync();
         }
         catch (PostgresException e)
         {
@@ -98,32 +113,42 @@ public static class Channels
 
     public static async Task<ChannelRow?> GetChannel(ulong id)
     {
-        string query = "SELECT * FROM banned_phrases WHERE id=$1";
+        await using NpgsqlConnection connection = await Database.GetConnection();
+        await using var command = connection.CreateCommand();
+        
+        string query = $"SELECT * FROM channels WHERE id={id}";
 
-        await using NpgsqlCommand command = DataSource.CreateCommand(query);
-        command.Parameters.AddWithValue(id);
-            
-        await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
+        command.CommandText = query;
+        
+        try
         {
-            ulong phraseId = (ulong)reader.GetInt64(reader.GetOrdinal("id"));
-            DateTime createdAt = reader.GetDateTime(reader.GetOrdinal("created_at"));
-            string name = reader.GetString(reader.GetOrdinal("name"));
-            bool tracked = reader.GetBoolean(reader.GetOrdinal("tracked"));
-            ulong guildId = (ulong)reader.GetInt64(reader.GetOrdinal("guild_id"));
-            string description = reader.GetString(reader.GetOrdinal("description"));
-            int messages = reader.GetInt32(reader.GetOrdinal("messages"));
-                
-            return new ChannelRow
+            await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
             {
-                Id = phraseId,
-                CreatedAt = createdAt,
-                Name = name,
-                Tracked = tracked,
-                GuildId = guildId,
-                Description = description,
-                Messages = messages
-            };
+                ulong phraseId = (ulong)reader.GetInt64(reader.GetOrdinal("id"));
+                DateTime createdAt = reader.GetDateTime(reader.GetOrdinal("created_at"));
+                string name = reader.GetString(reader.GetOrdinal("name"));
+                bool tracked = reader.GetBoolean(reader.GetOrdinal("tracked"));
+                ulong guildId = (ulong)reader.GetInt64(reader.GetOrdinal("guild_id"));
+                string description = reader.GetString(reader.GetOrdinal("description"));
+                int messages = reader.GetInt32(reader.GetOrdinal("messages"));
+
+                return new ChannelRow
+                {
+                    Id = phraseId,
+                    CreatedAt = createdAt,
+                    Name = name,
+                    Tracked = tracked,
+                    GuildId = guildId,
+                    Description = description,
+                    Messages = messages
+                };
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
         }
 
         return null;

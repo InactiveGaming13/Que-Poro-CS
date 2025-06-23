@@ -1,12 +1,12 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.Drawing;
-using DisCatSharp;
+﻿using DisCatSharp;
 using DisCatSharp.ApplicationCommands;
 using DisCatSharp.ApplicationCommands.Attributes;
 using DisCatSharp.ApplicationCommands.Context;
 using DisCatSharp.Entities;
 using DisCatSharp.Enums;
 using DisCatSharp.EventArgs;
+using QuePoro.Database.Types;
+using QuePoro.Database.Handlers;
 
 namespace QuePoro.Handlers;
 
@@ -143,15 +143,48 @@ public static class MessageHandler
 {
     public static async Task MessageCreated(DiscordClient s, MessageCreateEventArgs e)
     {
+        if (e.Guild is null)
+            return;
+        
+        GuildRow? guild = await Guilds.GetGuild(e.Guild.Id);
+        ChannelRow? channel = await Channels.GetChannel(e.Channel.Id);
+        UserRow? user = await Users.GetUser(e.Author.Id);
+        UserStatRow? userStats = await UserStats.GetUser(e.Author.Id);
+
+        if (guild == null)
+            await Guilds.AddGuild(e.Guild.Id, e.Guild.Name);
+
+        if (channel == null)
+            await Channels.AddChannel(e.Channel.Id, e.Guild.Id, e.Channel.Name, e.Channel.Topic);
+
+        if (user == null)
+            await Users.AddUser(e.Author.Id, e.Author.Username, e.Author.GlobalName ?? e.Author.Username);
+
+        if (userStats == null)
+            await UserStats.AddUser(e.Author.Id);
+
         if (e.Message.Content.ToLower().StartsWith("@ignore"))
             return;
+        
+        channel = await Channels.GetChannel(e.Channel.Id);
+        userStats = await UserStats.GetUser(e.Author.Id);
+        
         Console.WriteLine(
             $"{e.Message.Author.Username} sent a message in Guild: {e.Guild.Name} in Channel: {e.Channel.Name}");
+        
+        await Channels.ModifyChannel(e.Channel.Id, messages: channel?.Messages + 1);
+        await UserStats.ModifyUser(e.Author.Id, sent: userStats?.SentMessages + 1);
 
         if (e.Message.Author.IsBot)
         {
             Console.WriteLine("Message came from a bot! Ignoring...");
             return;
+        }
+
+        List<ReactionRow> userReactions = await Reactions.GetReactions(e.Author.Id);
+        foreach (ReactionRow reaction in userReactions)
+        {
+            Console.WriteLine($"User: {e.Author.GlobalName} | Reaction: {reaction.Emoji}");
         }
 
         if (Convert.ToString(e.Message.Author.Id) == Environment.GetEnvironmentVariable("BOT_OWNER_ID"))
@@ -187,8 +220,14 @@ public static class MessageHandler
 
     public static Task MessageDeleted(DiscordClient s, MessageDeleteEventArgs e)
     {
+        if (e.Message.Author is not null)
+        {
+            Console.WriteLine(
+                $"{e.Message.Author.GlobalName} deleted a message in Guild: {e.Guild.Name} in Channel: {e.Channel.Name}");
+            return Task.CompletedTask;
+        }
         Console.WriteLine(
-            $"{e.Message.Author.Username} deleted a message in Guild: {e.Guild.Name} in Channel: {e.Channel.Name}");
+            $"A message was deleted in Guild: {e.Guild.Name} in Channel: {e.Channel.Name}");
         return Task.CompletedTask;
     }
 

@@ -4,7 +4,7 @@ namespace QuePoro.Database;
 
 public static class Database
 {
-    public static NpgsqlDataSource GetDataSource()
+    public static async Task<NpgsqlConnection> GetConnection()
     {
         string? databaseHost = Environment.GetEnvironmentVariable("DATABASE_HOST");
         string? databasePort = Environment.GetEnvironmentVariable("DATABASE_PORT");
@@ -14,6 +14,9 @@ public static class Database
 
         string connectionString =
             $"Host={databaseHost};Port={databasePort};Username={databaseUser};Password={databasePass};Database={databaseDb}";
-        return NpgsqlDataSource.Create(connectionString);
+        
+        NpgsqlConnection connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        return connection;
     }
 }

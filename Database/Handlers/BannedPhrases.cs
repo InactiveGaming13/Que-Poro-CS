@@ -5,24 +5,23 @@ namespace QuePoro.Database.Handlers;
 using Types;
 
 public static class BannedPhrases
-    {
-        private static readonly NpgsqlDataSource DataSource = Database.GetDataSource();
-
-        public static async Task AddPhrase(ulong creatorId, int severity, string phrase, bool enabled = true,
-            ulong? guildId = null)
+{
+        public static async Task AddPhrase(ulong creatorId, int severity, string phrase, bool enabled = true)
         {
-            const string query =
-                "INSERT INTO banned_phrases (created_by, guild_id, severity, phrase, enabled) VALUES ($1, $2, $3, $4, $5)";
-            await using var cmd = DataSource.CreateCommand(query);
-            cmd.Parameters.AddWithValue(creatorId);
-            cmd.Parameters.AddWithValue(guildId);
-            cmd.Parameters.AddWithValue(severity);
-            cmd.Parameters.AddWithValue(phrase);
-            cmd.Parameters.AddWithValue(enabled);
+            await using NpgsqlConnection connection = await Database.GetConnection();
+            await using var command = connection.CreateCommand();
+            string query =
+                "INSERT INTO banned_phrases (created_by, severity, phrase, enabled) VALUES ($1, $2, $3, $4)";
+
+            command.CommandText = query;
+            command.Parameters.AddWithValue(creatorId);
+            command.Parameters.AddWithValue(severity);
+            command.Parameters.AddWithValue(phrase);
+            command.Parameters.AddWithValue(enabled);
             
             try
             {
-                await cmd.ExecuteNonQueryAsync();
+                await command.ExecuteNonQueryAsync();
             }
             catch (PostgresException e)
             {
@@ -39,13 +38,16 @@ public static class BannedPhrases
         
         public static async Task RemovePhrase(Guid id)
         {
-            const string query = "DELETE FROM banned_phrases WHERE id=$1";
-            await using var cmd = DataSource.CreateCommand(query);
-            cmd.Parameters.AddWithValue(id);
+            await using NpgsqlConnection connection = await Database.GetConnection();
+            await using var command = connection.CreateCommand();
+            
+            string query = "DELETE FROM banned_phrases WHERE id=$1";
+            command.CommandText = query;
+            command.Parameters.AddWithValue(id);
             
             try
             {
-                await cmd.ExecuteNonQueryAsync();
+                await command.ExecuteNonQueryAsync();
             }
             catch (PostgresException e)
             {
@@ -61,6 +63,9 @@ public static class BannedPhrases
         {
             if (guildId == null && severity == null && phrase == null && enabled == null)
                 return;
+            
+            await using NpgsqlConnection connection = await Database.GetConnection();
+            await using var command = connection.CreateCommand();
             
             string query = "UPDATE banned_phrases SET";
 
@@ -80,13 +85,13 @@ public static class BannedPhrases
                 query = query.Remove(query.Length - 1);
 
             query += " WHERE id=$1";
-            
-            await using var cmd = DataSource.CreateCommand(query);
-            cmd.Parameters.AddWithValue(id);
+
+            command.CommandText = query;
+            command.Parameters.AddWithValue(id);
             
             try
             {
-                await cmd.ExecuteNonQueryAsync();
+                await command.ExecuteNonQueryAsync();
             }
             catch (PostgresException e)
             {
@@ -99,25 +104,25 @@ public static class BannedPhrases
 
         public static async Task<Guid?> GetPhraseId(string phrase)
         {
-            string query = "SELECT * FROM banned_phrases WHERE phrase LIKE $1";
+            await using NpgsqlConnection connection = await Database.GetConnection();
+            await using var command = connection.CreateCommand();
             
-            await using NpgsqlCommand command = DataSource.CreateCommand(query);
-            command.Parameters.AddWithValue(phrase);
-            
-            await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
-            {
-                return reader.GetGuid(reader.GetOrdinal("id"));
-            }
+            string query = "SELECT id FROM banned_phrases WHERE phrase LIKE $1";
 
-            return null;
+            command.CommandText = query;
+            command.Parameters.AddWithValue(phrase);
+
+            return (Guid)command.ExecuteScalar()!;
         }
 
         public static async Task<BannedPhraseRow?> GetPhrase(Guid id)
         {
+            await using NpgsqlConnection connection = await Database.GetConnection();
+            await using var command = connection.CreateCommand();
+            
             string query = "SELECT * FROM banned_phrases WHERE id=$1";
 
-            await using NpgsqlCommand command = DataSource.CreateCommand(query);
+            command.CommandText = query;
             command.Parameters.AddWithValue(id);
             
             await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();

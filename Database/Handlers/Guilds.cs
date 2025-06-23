@@ -1,52 +1,61 @@
 ﻿using Npgsql;
+using NpgsqlTypes;
 using QuePoro.Database.Types;
 
 namespace QuePoro.Database.Handlers;
 
-public class Guilds
+public static class Guilds
 {
-    private static readonly NpgsqlDataSource DataSource = Database.GetDataSource();
-    
-    public static async Task AddGuild(ulong id, string name, ulong? tempVcChannel = null,
-        int? tempVcMemberDefault = null, int? tempVcBitrateDefault = null, ulong? robloxAlertChannel = null,
-        int? robloxAlertInterval = null)
+    public static async Task AddGuild(ulong id, string name, bool tracked = true, ulong tempVcChannel = 0,
+        int tempVcDefaultMemberLimit = 5, int tempVcDefaultBitrate = 64, ulong robloxAlertChannel = 0,
+        int robloxAlertInterval = 60)
     {
-        const string query =
-            "INSERT INTO guilds (id, name, temp_vc_channel, temp_vc_member_default, temp_vc_bitrate_default, roblox_alert_channel, roblox_alert_interval) VALUES ($1, $2, $3, $4, $5, $6, $7)";
-        await using var cmd = DataSource.CreateCommand(query);
-        cmd.Parameters.AddWithValue(id);
-        cmd.Parameters.AddWithValue(name);
-        cmd.Parameters.AddWithValue(tempVcChannel);
-        cmd.Parameters.AddWithValue(tempVcMemberDefault);
-        cmd.Parameters.AddWithValue(tempVcBitrateDefault);
-        cmd.Parameters.AddWithValue(robloxAlertChannel);
-        cmd.Parameters.AddWithValue(robloxAlertInterval);
-            
+        await using NpgsqlConnection connection = await Database.GetConnection();
+        await using var command = connection.CreateCommand();
+        
+        string query = 
+            "INSERT INTO guilds (id, name, tracked, temp_vc_channel, temp_vc_default_member_limit," +
+            "temp_vc_default_bitrate, roblox_alert_channel, roblox_alert_interval) VALUES (@id, @name, @tracked," +
+            " @tempVcChannel, @tempVcDefaultMemberLimit, @tempVcDefaultBitrate, @robloxAlertChannel, @robloxAlertInterval)";
+
+        command.CommandText = query;
+        command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
+        command.Parameters.Add(new NpgsqlParameter("name", NpgsqlDbType.Text) { Value = name });
+        command.Parameters.Add(new NpgsqlParameter("tracked", NpgsqlDbType.Boolean) { Value = tracked });
+        command.Parameters.Add(new NpgsqlParameter("tempVcChannel", NpgsqlDbType.Numeric) { Value = (long)tempVcChannel });
+        command.Parameters.Add(new NpgsqlParameter("tempVcDefaultMemberLimit", NpgsqlDbType.Integer) { Value = tempVcDefaultMemberLimit });
+        command.Parameters.Add(new NpgsqlParameter("tempVcDefaultBitrate", NpgsqlDbType.Integer) { Value = tempVcDefaultBitrate });
+        command.Parameters.Add(new NpgsqlParameter("robloxAlertChannel", NpgsqlDbType.Numeric) { Value = (long)robloxAlertChannel });
+        command.Parameters.Add(new NpgsqlParameter("robloxAlertInterval", NpgsqlDbType.Integer) { Value = robloxAlertInterval });
+
+        foreach (NpgsqlParameter parameter in command.Parameters)
+        {
+            Console.WriteLine($"{parameter.ParameterName}: {parameter.Value} | {parameter.NpgsqlDbType}");
+        }
+        
         try
         {
-            await cmd.ExecuteNonQueryAsync();
+            int rows = await command.ExecuteNonQueryAsync();
         }
-        catch (PostgresException e)
+        catch (Exception e)
         {
-            if (e.ErrorCode != -2147467259)
-            {
-                Console.WriteLine("Unexpected Postgres Error");
-                return;
-            }
-                
-            Console.WriteLine($"{e.ErrorCode} | {e.Message}");
+            Console.WriteLine(e);
         }
     }
     
     public static async Task RemoveGuild(ulong id)
     {
-        const string query = "DELETE FROM guilds WHERE id=$1";
-        await using var cmd = DataSource.CreateCommand(query);
-        cmd.Parameters.AddWithValue(id);
+        await using NpgsqlConnection connection = await Database.GetConnection();
+        await using var command = connection.CreateCommand();
+        
+        string query = "DELETE FROM guilds WHERE id=$1";
+
+        command.CommandText = query;
+        command.Parameters.AddWithValue(id);
             
         try
         {
-            await cmd.ExecuteNonQueryAsync();
+            await command.ExecuteNonQueryAsync();
         }
         catch (PostgresException e)
         {
@@ -64,6 +73,9 @@ public class Guilds
         if (name == null && tempVcChannel == null && tempVcMemberDefault == null && tempVcBitrateDefault == null &&
             robloxAlertChannel == null && robloxAlertInterval == null)
             return;
+        
+        await using NpgsqlConnection connection = await Database.GetConnection();
+        await using var command = connection.CreateCommand();
             
         string query = "UPDATE banned_phrases SET";
 
@@ -71,13 +83,13 @@ public class Guilds
             query += $" name='{name}',";
 
         if (tempVcChannel != null)
-            query += $" temp_vc_channel='{tempVcChannel}',";
+            query += $" temp_vc_channel='{tempVcChannel}'";
 
         if (tempVcMemberDefault != null)
-            query += $" temp_vc_member_default={tempVcMemberDefault},";
+            query += $" temp_vc_default_member_limit={tempVcMemberDefault},";
 
         if (tempVcBitrateDefault != null)
-            query += $" temp_vc_bitrate_default={tempVcBitrateDefault},";
+            query += $" temp_vc_default_bitrate={tempVcBitrateDefault},";
         
         if (robloxAlertChannel != null)
             query += $" roblox_alert_channel={robloxAlertChannel},";
@@ -89,13 +101,13 @@ public class Guilds
             query = query.Remove(query.Length - 1);
 
         query += " WHERE id=$1";
-            
-        await using var cmd = DataSource.CreateCommand(query);
-        cmd.Parameters.AddWithValue(id);
+
+        command.CommandText = query;
+        command.Parameters.AddWithValue(id);
             
         try
         {
-            await cmd.ExecuteNonQueryAsync();
+            await command.ExecuteNonQueryAsync();
         }
         catch (PostgresException e)
         {
@@ -108,33 +120,35 @@ public class Guilds
     
     public static async Task<GuildRow?> GetGuild(ulong id)
     {
-        string query = "SELECT * FROM guilds WHERE id=$1";
+        await using NpgsqlConnection connection = await Database.GetConnection();
+        await using var command = connection.CreateCommand();
+        
+        string query = $"SELECT * FROM guilds WHERE id={id}";
 
-        await using NpgsqlCommand command = DataSource.CreateCommand(query);
-        command.Parameters.AddWithValue(id);
-            
+        command.CommandText = query;
+        
         await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            ulong phraseId = (ulong)reader.GetInt64(reader.GetOrdinal("id"));
+            ulong guildId = (ulong)reader.GetInt64(reader.GetOrdinal("id"));
             DateTime createdAt = reader.GetDateTime(reader.GetOrdinal("created_at"));
-            string name = reader.GetString(reader.GetOrdinal("name"));
+            string guildName = reader.GetString(reader.GetOrdinal("name"));
             bool tracked = reader.GetBoolean(reader.GetOrdinal("tracked"));
             ulong tempVcChannel = (ulong)reader.GetInt64(reader.GetOrdinal("temp_vc_channel"));
-            int tempVcMemberDefault = reader.GetInt32(reader.GetOrdinal("temp_vc_member_default"));
-            int tempVcBitrateDefault = reader.GetInt32(reader.GetOrdinal("temp_vc_bitrate_default"));
-            ulong robloxAlertChannel = (ulong)reader.GetInt64(reader.GetOrdinal("temp_vc_channel"));
-            int robloxAlertInterval = reader.GetInt32(reader.GetOrdinal("temp_vc_member_default"));
-                
+            short tempVcDefaultMemberLimit = reader.GetInt16(reader.GetOrdinal("temp_vc_default_member_limit"));
+            int tempVcDefaultBitrate = reader.GetInt32(reader.GetOrdinal("temp_vc_default_bitrate"));
+            ulong robloxAlertChannel = (ulong)reader.GetInt64(reader.GetOrdinal("roblox_alert_channel"));
+            int robloxAlertInterval = reader.GetInt32(reader.GetOrdinal("roblox_alert_interval"));
+
             return new GuildRow
             {
-                Id = phraseId,
+                Id = guildId,
                 CreatedAt = createdAt,
-                Name = name,
+                Name = guildName,
                 Tracked = tracked,
                 TempVcChannel = tempVcChannel,
-                TempVcMemberDefault = tempVcMemberDefault,
-                TempVcBitrateDefault = tempVcBitrateDefault,
+                TempVcDefaultMemberLimit = tempVcDefaultMemberLimit,
+                TempVcDefaultBitrate = tempVcDefaultBitrate,
                 RobloxAlertChannel = robloxAlertChannel,
                 RobloxAlertInterval = robloxAlertInterval
             };

@@ -23,6 +23,17 @@ internal class Program
         // Load the environment variables
         DotEnv.Load();
 
+        ConfigRow? config = await Config.GetConfig();
+
+        if (config == null)
+        {
+            await Config.AddConfig(0, "with my testes");
+            config = await Config.GetConfig();
+            Console.WriteLine($"Status: {config?.StatusMessage}");
+        }
+
+        await Config.ModifyConfig(0, "with my balls");
+
         string? botToken = Environment.GetEnvironmentVariable("DISCORD_TOKEN");
         string? lavalinkHost = Environment.GetEnvironmentVariable("LAVALINK_HOST");
         string? lavalinkPort = Environment.GetEnvironmentVariable("LAVALINK_PORT");
@@ -90,13 +101,15 @@ internal class Program
         appCommands.RegisterGlobalCommands<MusicCommands>();
         appCommands.RegisterGlobalCommands<ReactionCommands>();
         appCommands.RegisterGlobalCommands<TempVcCommands>();
-        appCommands.RegisterGuildCommands<TesterCommands>(1023182344087146546);
+        if (config is { TestersEnabled: true })
+            appCommands.RegisterGlobalCommands<TesterCommands>();
+        else
+            appCommands.RegisterGuildCommands<TesterCommands>(1023182344087146546);
         appCommands.RegisterGlobalCommands<VoiceCommands>();
         
         // Handle the bot Ready event
         discord.Ready += async (s, e) =>
         {
-            await discord.UpdateStatusAsync(new DiscordActivity("with my testes", ActivityType.Playing), UserStatus.Online);
             if (usingLavalink)
             {
                 try
@@ -112,6 +125,49 @@ internal class Program
             else
                 Console.WriteLine("Lavalink is disabled");
             
+            Console.WriteLine("Checking config...");
+
+            if (config == null)
+            {
+                Console.WriteLine("Bot is ready.");
+                return;
+            }
+
+            if (config.ShutdownChannel != 0 && config.ShutdownMessage != 0)
+            {
+                DiscordChannel channel = await s.GetChannelAsync(config.ShutdownChannel);
+                DiscordMessage? message = await channel.TryGetMessageAsync(config.ShutdownMessage);
+
+                if (message is not null)
+                {
+                    Console.WriteLine("Deleting shutdown message...");
+                    await message.DeleteAsync();
+                    await Config.ModifyConfig(shutdownChannel: 0, shutdownMessage: 0);
+                }
+            }
+
+            if (string.IsNullOrEmpty(config.StatusMessage))
+            {
+                Console.WriteLine("Bot is ready.");
+                return;
+            }
+
+            ActivityType? activityType = config.StatusType switch
+            {
+                0 => ActivityType.Playing,
+                2 => ActivityType.ListeningTo,
+                3 => ActivityType.Watching,
+                _ => null
+            };
+
+            if (activityType == null)
+            {
+                Console.WriteLine("Bot is ready.");
+                return;
+            }
+            
+            Console.WriteLine("Setting status...");
+            await discord.UpdateStatusAsync(new DiscordActivity(config.StatusMessage, (ActivityType)activityType), UserStatus.Online);
             Console.WriteLine("Bot is ready.");
         };
         
