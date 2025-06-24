@@ -4,6 +4,7 @@ using DisCatSharp.ApplicationCommands.Attributes;
 using DisCatSharp.ApplicationCommands.Context;
 using DisCatSharp.Entities;
 using DisCatSharp.Enums;
+using DisCatSharp.EventArgs;
 using QuePoro.Database.Handlers;
 using QuePoro.Database.Types;
 
@@ -22,7 +23,7 @@ public class ReactionCommands : ApplicationCommandsModule
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         
-        DiscordEmoji? discordEmoji = await EmojiHandler.GetEmoji(e.Client, emoji);
+        DiscordEmoji? discordEmoji = await ReactionHandler.GetEmoji(e.Client, emoji);
         if (discordEmoji is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
@@ -32,30 +33,42 @@ public class ReactionCommands : ApplicationCommandsModule
 
         UserRow? databaseUser = await Users.GetUser(e.UserId);
 
+        if (databaseUser is null)
+        {
+            await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName ?? e.User.Username);
+            databaseUser = await Users.GetUser(e.UserId);
+        }
+
         switch (user)
         {
-            case not null when user == e.User && triggerMessage is not null:
-                await Reactions.AddReaction(e.UserId, user.Id, discordEmoji.Name, triggerMessage, exactTrigger);
+            case null when databaseUser is { Admin: true }:
+                if (!await Reactions.AddReaction(e.UserId, discordEmoji.Name, null, triggerMessage, exactTrigger))
+                {
+                    await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                        "An unexpected database error occured."));
+                    return;
+                }
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                    $"Added {emoji} with {(exactTrigger ? "exact" : "")} trigger message `{triggerMessage}`to your reactions."));
-                return;
-            
-            case not null when user == e.User && triggerMessage is null:
-                await Reactions.AddReaction(e.UserId, user.Id, discordEmoji.Name, triggerMessage, exactTrigger);
-                await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                    $"Added {emoji} to your reactions."));
+                    $"Added {emoji}{(triggerMessage is not null 
+                        ? $" with {(exactTrigger ? "exact" : "")} trigger message `{triggerMessage}`" 
+                        : "")} to global reactions."));
                 return;
                 
-            case not null when user != e.User && triggerMessage is not null && databaseUser is { Admin: true }:
-                await Reactions.AddReaction(e.UserId, user.Id, discordEmoji.Name, triggerMessage, exactTrigger);
+            case null when databaseUser is { Admin: false}:
+            case not null when user == e.User:
+                await Reactions.AddReaction(e.UserId, discordEmoji.Name, e.UserId, triggerMessage, exactTrigger);
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                    $"Added {emoji} with {(exactTrigger ? "exact" : "")} trigger message `{triggerMessage}`to {user.Mention} reactions."));
+                    $"Added {emoji}{(triggerMessage is not null 
+                        ? $" with {(exactTrigger ? "exact" : "")} trigger message `{triggerMessage}`" 
+                        : "")} to your reactions."));
                 return;
-            
-            case not null when user != e.User && triggerMessage is null && databaseUser is { Admin: true }:
-                await Reactions.AddReaction(e.UserId, user.Id, discordEmoji.Name, triggerMessage, exactTrigger);
+
+            case not null when user != e.User && databaseUser is { Admin: true }:
+                await Reactions.AddReaction(e.UserId, discordEmoji.Name, user.Id, triggerMessage, exactTrigger);
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                    $"Added {emoji} to {user.Mention} reactions."));
+                    $"Added {emoji}{(triggerMessage is not null 
+                        ? $" with {(exactTrigger ? "exact" : "")} trigger message `{triggerMessage}`" 
+                        : "")} to {user.Mention} reactions."));
                 return;
             
             case not null when user != e.User && databaseUser is { Admin: false }:
@@ -77,7 +90,7 @@ public class ReactionCommands : ApplicationCommandsModule
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
 
-        DiscordEmoji? discordEmoji = await EmojiHandler.GetEmoji(e.Client, emoji);
+        DiscordEmoji? discordEmoji = await ReactionHandler.GetEmoji(e.Client, emoji);
 
         if (discordEmoji is null)
         {
@@ -87,6 +100,13 @@ public class ReactionCommands : ApplicationCommandsModule
         }
 
         UserRow? databaseUser = await Users.GetUser(e.UserId);
+        
+        if (databaseUser is null)
+        {
+            await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName ?? e.User.Username);
+            databaseUser = await Users.GetUser(e.UserId);
+        }
+        
         Guid? authorEmojiId = await Reactions.GetReactionId(e.UserId, discordEmoji.Name);
         Guid? userEmojiId = user != null ? await Reactions.GetReactionId(user.Id, discordEmoji.Name) : null;
 
@@ -164,7 +184,7 @@ public class ReactionCommands : ApplicationCommandsModule
     }
 }
 
-public class EmojiHandler()
+public class ReactionHandler()
 {
     public static Task<DiscordEmoji?> GetEmoji(DiscordClient client, string emoji)
     {
@@ -175,5 +195,45 @@ public class EmojiHandler()
         if (guild is not null) return Task.FromResult(guild);
         DiscordEmoji.TryFromName(client, emoji, out DiscordEmoji? name);
         return Task.FromResult(name ?? null);
+    }
+    
+    private static async Task AddMessageReaction(MessageCreateEventArgs e, DiscordEmoji emoji)
+    {
+        await e.Message.CreateReactionAsync(emoji);
+    }
+
+    public static async Task HandleUserReactions(DiscordClient client, MessageCreateEventArgs e, UserRow user)
+    {
+        if (!user.ReactedTo)
+            return;
+        
+        List<ReactionRow> userReactions = await Reactions.GetReactions(e.Author.Id);
+        
+        if (userReactions.Count == 0)
+            return;
+        
+        foreach (ReactionRow reaction in userReactions)
+        {
+            DiscordEmoji? discordEmoji = null;
+            DiscordEmoji.TryFromUnicode(reaction.Emoji, out discordEmoji);
+            if (discordEmoji is null)
+                DiscordEmoji.TryFromGuildEmote(client,
+                    (ulong)Convert.ToInt64(reaction.Emoji.Split(":")[2].Replace(">", "")),
+                    out discordEmoji);
+            if (discordEmoji is null)
+                return;
+            
+            switch (reaction.TriggerMessage)
+            {
+                case not null when reaction is { ExactTrigger: false } && 
+                                   !e.Message.Content.Contains(reaction.TriggerMessage, StringComparison.CurrentCultureIgnoreCase):
+                case not null when reaction is { ExactTrigger: true } &&
+                                   !reaction.TriggerMessage.ToLower().Equals(e.Message.Content.ToLower()):
+                    continue;
+                default:
+                    await AddMessageReaction(e, discordEmoji);
+                    break;
+            }
+        }
     }
 }

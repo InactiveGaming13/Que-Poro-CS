@@ -11,7 +11,7 @@ public static class Guilds
         int robloxAlertInterval = 60)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
-        await using var command = connection.CreateCommand();
+        await using NpgsqlCommand command = connection.CreateCommand();
         
         string query = 
             "INSERT INTO guilds (id, name, tracked, temp_vc_channel, temp_vc_default_member_limit," +
@@ -41,7 +41,7 @@ public static class Guilds
     public static async Task RemoveGuild(ulong id)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
-        await using var command = connection.CreateCommand();
+        await using NpgsqlCommand command = connection.CreateCommand();
         
         string query = "DELETE FROM guilds WHERE id=$1";
 
@@ -67,7 +67,7 @@ public static class Guilds
             return;
         
         await using NpgsqlConnection connection = await Database.GetConnection();
-        await using var command = connection.CreateCommand();
+        await using NpgsqlCommand command = connection.CreateCommand();
             
         string query = "UPDATE banned_phrases SET";
 
@@ -110,7 +110,7 @@ public static class Guilds
     public static async Task<GuildRow?> GetGuild(ulong id)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
-        await using var command = connection.CreateCommand();
+        await using NpgsqlCommand command = connection.CreateCommand();
         
         string query = $"SELECT * FROM guilds WHERE id={id}";
 

@@ -29,10 +29,10 @@ public class TesterCommands : ApplicationCommandsModule
     /// </summary>
     /// <param name="ctx">The context of the command.</param>
     [SlashCommand("ping", "Sends pong")]
-    public async Task Ping(InteractionContext ctx)
+    public async Task Ping(InteractionContext e)
     {
-        await ctx.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
-        await ctx.EditResponseAsync(new DiscordWebhookBuilder()
-            .WithContent("Pong!"));
+        await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+        await e.EditResponseAsync(new DiscordWebhookBuilder()
+            .WithContent($"Pong! ({e.Client.Ping}ms)"));
     }
 }

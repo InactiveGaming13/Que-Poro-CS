@@ -111,7 +111,7 @@ internal class Program
         // Handle the bot Ready event
         discord.Ready += async (s, e) =>
         {
-            if (usingLavalink)
+            if (usingLavalink && lavalink is not null && lavalinkConfiguration is not null)
             {
                 try
                 {

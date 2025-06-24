@@ -81,15 +81,15 @@ public static class MessageHandler
         }
 
         if (user is { ReactedTo: true })
-            await HandleUserReactions(client, e, user);
+            await ReactionHandler.HandleUserReactions(client, e, user);
 
-        if (user is { RepliedTo: false })
-            await HandleUserResponses(e, user);
+        if (user is { RepliedTo: true })
+            await ResponseHandler.HandleUserResponses(e, user);
     }
 
     public static Task MessageDeleted(DiscordClient client, MessageDeleteEventArgs e)
     {
-        if (e.Message.Author is not null)
+        if (e.Message.Author.GlobalName is not null)
         {
             Console.WriteLine(
                 $"{e.Message.Author.GlobalName} deleted a message in Guild: {e.Guild.Name} in Channel: {e.Channel.Name}");
@@ -105,71 +105,5 @@ public static class MessageHandler
         Console.WriteLine(
             $"{e.Message.Author.Username} updated a message in Guild: {e.Guild.Name} in Channel: {e.Channel.Name}");
         return Task.CompletedTask;
-    }
-
-    private static async Task AddMessageReaction(MessageCreateEventArgs e, DiscordEmoji emoji)
-    {
-        await e.Message.CreateReactionAsync(emoji);
-    }
-
-    private static async Task HandleUserReactions(DiscordClient client, MessageCreateEventArgs e, UserRow user)
-    {
-        if (!user.ReactedTo)
-            return;
-        
-        List<ReactionRow> userReactions = await Reactions.GetReactions(e.Author.Id);
-        foreach (ReactionRow reaction in userReactions)
-        {
-            DiscordEmoji discordEmoji;
-            DiscordEmoji.TryFromUnicode(reaction.Emoji, out DiscordEmoji? global);
-            if (global is null)
-            {
-                DiscordEmoji.TryFromGuildEmote(client, (ulong)Convert.ToInt64(reaction.Emoji.Split(":")[2].Replace(">", "")),
-                    out DiscordEmoji? guild);
-                if (guild is null)
-                    return;
-                discordEmoji = guild;
-            }
-            else
-                discordEmoji = global;
-            
-            switch (reaction.TriggerMessage)
-            {
-                case not null when reaction is { ExactTrigger: false } && 
-                                   !e.Message.Content.Contains(reaction.TriggerMessage, StringComparison.CurrentCultureIgnoreCase):
-                case not null when reaction is { ExactTrigger: true } &&
-                               !reaction.TriggerMessage.ToLower().Equals(e.Message.Content.ToLower()):
-                    continue;
-                default:
-                    await AddMessageReaction(e, discordEmoji);
-                    break;
-            }
-        }
-    }
-
-    private static async Task HandleUserResponses(MessageCreateEventArgs e, UserRow user)
-    {
-        if (!user.RepliedTo)
-            return;
-
-        List<ResponseRow> responses = await GetUserChannelResponses(user.Id, e.Channel.Id);
-        Console.WriteLine(responses.Count);
-        foreach (ResponseRow response in responses)
-        {
-            Console.WriteLine(response.TriggerMessage);
-            Console.WriteLine(response.ResponseMessage);
-        }
-    }
-
-    public static async Task<List<ResponseRow>> GetUserChannelResponses(ulong userId, ulong channelId)
-    {
-        List<ResponseRow> globalResponses = await Responses.GetGlobalResponses();
-        List<ResponseRow> channelResponses = await Responses.GetChannelResponses(channelId);
-        List<ResponseRow> userResponses = await Responses.GetUserResponses(userId);
-        List<ResponseRow> userChannelResponses = channelResponses.Intersect(userResponses).ToList();
-        Console.WriteLine(userChannelResponses.Count);
-        globalResponses.ForEach(row => userChannelResponses.Add(row));
-        Console.WriteLine(userChannelResponses.Count);
-        return userChannelResponses;
     }
 }

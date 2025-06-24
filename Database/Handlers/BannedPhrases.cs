@@ -1,116 +1,119 @@
 ﻿using Npgsql;
+using NpgsqlTypes;
+using QuePoro.Database.Types;
 
 namespace QuePoro.Database.Handlers;
-
-using Types;
 
 public static class BannedPhrases
 {
         public static async Task AddPhrase(ulong creatorId, int severity, string phrase, bool enabled = true)
         {
             await using NpgsqlConnection connection = await Database.GetConnection();
-            await using var command = connection.CreateCommand();
-            string query =
-                "INSERT INTO banned_phrases (created_by, severity, phrase, enabled) VALUES ($1, $2, $3, $4)";
+            await using NpgsqlCommand command = connection.CreateCommand();
+            const string query = 
+                "INSERT INTO banned_phrases (created_by, severity, phrase, enabled) " +
+                "VALUES (@createdBy, @severity, @phrase, @enabled)";
 
             command.CommandText = query;
-            command.Parameters.AddWithValue(creatorId);
-            command.Parameters.AddWithValue(severity);
-            command.Parameters.AddWithValue(phrase);
-            command.Parameters.AddWithValue(enabled);
+            command.Parameters.Add(new NpgsqlParameter("createdBy", NpgsqlDbType.Numeric) { Value = (long)creatorId });
+            command.Parameters.Add(new NpgsqlParameter("severity", NpgsqlDbType.Integer) { Value = severity });
+            command.Parameters.Add(new NpgsqlParameter("phrase", NpgsqlDbType.Text) { Value = phrase });
+            command.Parameters.Add(new NpgsqlParameter("enabled", NpgsqlDbType.Boolean) { Value = enabled });
             
             try
             {
                 await command.ExecuteNonQueryAsync();
             }
-            catch (PostgresException e)
+            catch (Exception e)
             {
-                if (e.ErrorCode != -2147467259)
-                {
-                    Console.WriteLine("Unexpected Postgres Error");
-                    return;
-                }
-                
                 if (e.Message.Contains("banned_phrases_phrase_key", StringComparison.CurrentCultureIgnoreCase))
                     Console.WriteLine("Phrase already exists!");
+                
+                Console.WriteLine(e);
             }
         }
         
         public static async Task RemovePhrase(Guid id)
         {
             await using NpgsqlConnection connection = await Database.GetConnection();
-            await using var command = connection.CreateCommand();
+            await using NpgsqlCommand command = connection.CreateCommand();
             
-            string query = "DELETE FROM banned_phrases WHERE id=$1";
+            const string query = "DELETE FROM banned_phrases WHERE id=@id";
             command.CommandText = query;
-            command.Parameters.AddWithValue(id);
+            command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Uuid) { Value = id });
             
             try
             {
                 await command.ExecuteNonQueryAsync();
             }
-            catch (PostgresException e)
+            catch (Exception e)
             {
-                if (e.ErrorCode != -2147467259)
-                {
-                    Console.WriteLine("Unexpected Postgres Error");
-                }
+                Console.WriteLine(e);
             }
         }
 
         public static async Task ModifyPhrase(Guid id, ulong? guildId = null, int? severity = null,
             string? phrase = null, bool? enabled = null)
         {
-            if (guildId == null && severity == null && phrase == null && enabled == null)
+            if (guildId is null && severity is null && phrase is null && enabled is null)
                 return;
             
             await using NpgsqlConnection connection = await Database.GetConnection();
-            await using var command = connection.CreateCommand();
+            await using NpgsqlCommand command = connection.CreateCommand();
             
             string query = "UPDATE banned_phrases SET";
 
-            if (guildId != null)
-                query += $" guild_id={guildId},";
+            if (guildId is not null)
+            {
+                query += " guild_id=@guildId,";
+                command.Parameters.Add(new NpgsqlParameter("guildId", NpgsqlDbType.Numeric) { Value = (long)guildId });
+            }
 
-            if (severity != null)
-                query += $" severity={severity},";
+            if (severity is not null)
+            {
+                query += " severity=@severity,";
+                command.Parameters.Add(new NpgsqlParameter("severity", NpgsqlDbType.Integer) { Value = severity });
+            }
 
-            if (phrase != null)
-                query += $" phrase='{phrase}',";
+            if (phrase is not null)
+            {
+                query += " phrase=@phrase,";
+                command.Parameters.Add(new NpgsqlParameter("phrase", NpgsqlDbType.Text) { Value = phrase });
+            }
 
-            if (enabled != null)
-                query += $" enabled={enabled}";
+            if (enabled is not null)
+            {
+                query += " enabled=@enabled";
+                command.Parameters.Add(new NpgsqlParameter("enabled", NpgsqlDbType.Boolean) { Value = enabled });
+            }
 
             if (query.EndsWith(','))
                 query = query.Remove(query.Length - 1);
 
-            query += " WHERE id=$1";
+            query += " WHERE id=@id";
 
             command.CommandText = query;
-            command.Parameters.AddWithValue(id);
+            command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Uuid) { Value = id });
             
             try
             {
                 await command.ExecuteNonQueryAsync();
             }
-            catch (PostgresException e)
+            catch (Exception e)
             {
-                if (e.ErrorCode != -2147467259)
-                {
-                    Console.WriteLine("Unexpected Postgres Error");
-                }
+                Console.WriteLine(e);
             }
         }
 
         public static async Task<Guid?> GetPhraseId(string phrase)
         {
             await using NpgsqlConnection connection = await Database.GetConnection();
-            await using var command = connection.CreateCommand();
+            await using NpgsqlCommand command = connection.CreateCommand();
             
-            string query = "SELECT id FROM banned_phrases WHERE phrase LIKE $1";
+            const string query = "SELECT id FROM banned_phrases WHERE phrase LIKE @phrase";
 
             command.CommandText = query;
-            command.Parameters.AddWithValue(phrase);
+            command.Parameters.Add(new NpgsqlParameter("phrase", NpgsqlDbType.Text) { Value = phrase });
 
             return (Guid?)command.ExecuteScalar()!;
         }
@@ -118,31 +121,24 @@ public static class BannedPhrases
         public static async Task<BannedPhraseRow?> GetPhrase(Guid id)
         {
             await using NpgsqlConnection connection = await Database.GetConnection();
-            await using var command = connection.CreateCommand();
+            await using NpgsqlCommand command = connection.CreateCommand();
             
-            string query = "SELECT * FROM banned_phrases WHERE id=$1";
+            const string query = "SELECT * FROM banned_phrases WHERE id=@id";
 
             command.CommandText = query;
-            command.Parameters.AddWithValue(id);
+            command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Uuid) { Value = id });
             
             await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
-                Guid phraseId = reader.GetGuid(reader.GetOrdinal("id"));
-                DateTime createdAt = reader.GetDateTime(reader.GetOrdinal("created_at"));
-                long createdBy = reader.GetInt64(reader.GetOrdinal("created_by"));
-                int severity = reader.GetInt32(reader.GetOrdinal("severity"));
-                string bannedPhrase = reader.GetString(reader.GetOrdinal("phrase"));
-                bool enabled = reader.GetBoolean(reader.GetOrdinal("enabled"));
-                
                 return new BannedPhraseRow
                 {
-                    Id = phraseId,
-                    CreatedAt = createdAt,
-                    CreatedBy = createdBy,
-                    Severity = severity,
-                    Phrase = bannedPhrase,
-                    Enabled = enabled
+                    Id = reader.GetGuid(reader.GetOrdinal("id")),
+                    CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
+                    CreatedBy = (ulong)reader.GetInt64(reader.GetOrdinal("created_by")),
+                    Severity = reader.GetInt32(reader.GetOrdinal("severity")),
+                    Phrase = reader.GetString(reader.GetOrdinal("phrase")),
+                    Enabled = reader.GetBoolean(reader.GetOrdinal("enabled"))
                 };
             }
 

@@ -10,7 +10,7 @@ public class UserStats
         int modActions = 0, int strikes = 0)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
-        await using var command = connection.CreateCommand();
+        await using NpgsqlCommand command = connection.CreateCommand();
         
         string query =
             "INSERT INTO user_stats (id, sent, deleted, edited, temp_vc_created, mod_actions, strikes) " +
@@ -38,7 +38,7 @@ public class UserStats
     public static async Task<UserStatRow?> GetUser(ulong id)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
-        await using var command = connection.CreateCommand();
+        await using NpgsqlCommand command = connection.CreateCommand();
         
         string query = "SELECT * FROM user_stats WHERE id=@id";
 
@@ -75,7 +75,7 @@ public class UserStats
         int? tempVcCreated = null, int? modActions = null, int? strikes = null)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
-        await using var command = connection.CreateCommand();
+        await using NpgsqlCommand command = connection.CreateCommand();
         
         string query = "UPDATE user_stats SET";
 

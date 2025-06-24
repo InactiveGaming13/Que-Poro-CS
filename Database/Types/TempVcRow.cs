@@ -8,7 +8,6 @@ public class TempVcRow
     public required ulong GuildId { get; set; }
     public required ulong Master { get; set; }
     public required string Name { get; set; }
-    public required string Status { get; set; }
     public required int Bitrate { get; set; }
     public required int UserLimit { get; set; }
     public required int UserCount { get; set; }

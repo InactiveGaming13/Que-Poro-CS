@@ -9,9 +9,12 @@ public static class Users
     public static async Task AddUser(ulong userId, string username, string globalName, bool admin = false,
         bool repliedTo = true, bool tracked = true, bool banned = false)
     {
+        if ((long)userId == Convert.ToInt64(Environment.GetEnvironmentVariable("BOT_OWNER_ID")))
+            admin = true;
+        
         await using NpgsqlConnection connection = await Database.GetConnection();
-        await using var command = connection.CreateCommand();
-        string query = 
+        await using NpgsqlCommand command = connection.CreateCommand();
+        const string query = 
             "INSERT INTO users (id, username, global_name, admin, replied_to, tracked, banned) " +
             "VALUES (@id, @username, @globalName, @admin, @repliedTo, @tracked, @banned)";
 
@@ -37,7 +40,7 @@ public static class Users
     public static async Task RemoveUser(ulong userId)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
-        await using var command = connection.CreateCommand();
+        await using NpgsqlCommand command = connection.CreateCommand();
         
         string query = "DELETE FROM users WHERE id=@id";
 
@@ -57,7 +60,7 @@ public static class Users
     public static async Task<UserRow?> GetUser(ulong id)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
-        await using var command = connection.CreateCommand();
+        await using NpgsqlCommand command = connection.CreateCommand();
         
         string query = $"SELECT * FROM users WHERE id=@id";
 

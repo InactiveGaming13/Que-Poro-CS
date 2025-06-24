@@ -77,7 +77,6 @@ CREATE TABLE IF NOT EXISTS temp_vcs
             REFERENCES guilds,
     master     NUMERIC             NOT NULL UNIQUE,
     name       TEXT                NOT NULL,
-    status     TEXT                NOT NULL,
     bitrate    INTEGER             NOT NULL,
     user_limit INTEGER             NOT NULL,
     user_count INTEGER             NOT NULL
@@ -142,7 +141,7 @@ CREATE TABLE IF NOT EXISTS reactions
         CONSTRAINT created_by_id_fk
             REFERENCES users,
     emoji_code    TEXT             NOT NULL,
-    reacts_to     NUMERIC          NOT NULL
+    reacts_to     NUMERIC
         CONSTRAINT reacts_id_fk
             REFERENCES users,
     trigger       TEXT,

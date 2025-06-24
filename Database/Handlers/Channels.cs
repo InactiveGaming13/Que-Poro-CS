@@ -9,7 +9,7 @@ public static class Channels
     public static async Task AddChannel(ulong id, ulong guildId, string name, string? description = null, int messages = 0)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
-        await using var command = connection.CreateCommand();
+        await using NpgsqlCommand command = connection.CreateCommand();
         
         string query =
             "INSERT INTO channels (id, guild_id, name, description, messages) VALUES " + 
@@ -37,7 +37,7 @@ public static class Channels
     public static async Task RemoveChannel(ulong id)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
-        await using var command = connection.CreateCommand();
+        await using NpgsqlCommand command = connection.CreateCommand();
 
         string query = "DELETE FROM channels WHERE id=@id";
 
@@ -61,7 +61,7 @@ public static class Channels
             return;
         
         await using NpgsqlConnection connection = await Database.GetConnection();
-        await using var command = connection.CreateCommand();
+        await using NpgsqlCommand command = connection.CreateCommand();
             
         string query = "UPDATE channels SET";
 
@@ -110,7 +110,7 @@ public static class Channels
     public static async Task<ChannelRow?> GetChannel(ulong id)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
-        await using var command = connection.CreateCommand();
+        await using NpgsqlCommand command = connection.CreateCommand();
         
         string query = $"SELECT * FROM channels WHERE id={id}";
 
