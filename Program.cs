@@ -70,7 +70,7 @@ internal class Program
                 RestEndpoint = endpoint,
                 SocketEndpoint = endpoint,
                 EnableBuiltInQueueSystem = true,
-                DefaultVolume = 10
+                DefaultVolume = 15
             };
 
             // Enable voice for the bot
@@ -91,6 +91,7 @@ internal class Program
         appCommands.RegisterGlobalCommands<CreateAVcCommands>();
         appCommands.RegisterGlobalCommands<MessageCommands>();
         appCommands.RegisterGlobalCommands<MusicCommands>();
+        appCommands.RegisterGlobalCommands<PrivacyCommands>();
         appCommands.RegisterGlobalCommands<ReactionCommands>();
         appCommands.RegisterGlobalCommands<ResponseCommands>();
         appCommands.RegisterGlobalCommands<TempVcCommands>();

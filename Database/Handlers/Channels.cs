@@ -6,7 +6,8 @@ namespace QuePoro.Database.Handlers;
 
 public static class Channels
 {
-    public static async Task<bool> AddChannel(ulong id, ulong guildId, string name, string? description = null, int messages = 0)
+    public static async Task<bool> AddChannel(ulong id, ulong guildId, string name, string? description = null,
+        bool tracked = true, int messages = 0)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
@@ -59,7 +60,7 @@ public static class Channels
     }
 
     public static async Task<bool> ModifyChannel(ulong id, ulong? guildId = null, string? name = null,
-        string? description = null, int? messages = null)
+        string? description = null, bool? tracked = null, int? messages = null)
     {
         if (guildId == null && name == null && description == null && messages == null)
             return false;
@@ -85,6 +86,12 @@ public static class Channels
         {
             query += " description=@description,";
             command.Parameters.Add(new NpgsqlParameter("description", NpgsqlDbType.Text) { Value = description });
+        }
+        
+        if (tracked != null)
+        {
+            query += " tracked=@tracked,";
+            command.Parameters.Add(new NpgsqlParameter("tracked", NpgsqlDbType.Boolean) { Value = tracked });
         }
 
         if (messages != null)

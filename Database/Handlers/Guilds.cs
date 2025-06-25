@@ -63,9 +63,10 @@ public static class Guilds
         }
     }
     
-    public static async Task<bool> ModifyGuild(ulong id, string? name = null, ulong? tempVcChannel = null,
-        bool? tempVcEnabled = null, int? tempVcDefaultMemberLimit = null, int? tempVcDefaultBitrate = null,
-        ulong? robloxAlertChannel = null, bool? robloxAlertEnabled = null, int? robloxAlertInterval = null)
+    public static async Task<bool> ModifyGuild(ulong id, string? name = null, bool? tracked = null,
+        ulong? tempVcChannel = null, bool? tempVcEnabled = null, int? tempVcDefaultMemberLimit = null,
+        int? tempVcDefaultBitrate = null, ulong? robloxAlertChannel = null, bool? robloxAlertEnabled = null,
+        int? robloxAlertInterval = null)
     {
         if (name == null && tempVcChannel == null && tempVcDefaultMemberLimit == null && tempVcDefaultBitrate == null &&
             robloxAlertChannel == null && robloxAlertInterval == null)
@@ -80,6 +81,12 @@ public static class Guilds
         {
             query += " name=@name,";
             command.Parameters.Add(new NpgsqlParameter("name", NpgsqlDbType.Text) { Value = name });
+        }
+        
+        if (tracked != null)
+        {
+            query += " tracked=@tracked,";
+            command.Parameters.Add(new NpgsqlParameter("tracked", NpgsqlDbType.Boolean) { Value = tracked });
         }
 
         if (tempVcChannel is not null)
