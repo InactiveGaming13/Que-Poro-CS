@@ -6,12 +6,12 @@ namespace QuePoro.Database.Handlers;
 
 public static class Responses
 {
-    public static async Task AddResponse(ulong userResponsibleId, string trigger, ulong? userId = null,
+    public static async Task<bool> AddResponse(ulong userResponsibleId, string trigger, ulong? userId = null,
         ulong? channelId = null, string? response = null, string? mediaAlias = null, string? mediaCategory = null,
         bool exactTrigger = false, bool enabled = true)
     {
         if (response is null && mediaAlias is null && mediaCategory is null)
-            return;
+            return false;
         
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
@@ -45,10 +45,12 @@ public static class Responses
         try
         {
             await command.ExecuteNonQueryAsync();
+            return true;
         }
         catch (Exception e)
         {
             Console.WriteLine(e);
+            return false;
         }
     }
 
@@ -56,7 +58,7 @@ public static class Responses
     /// Removes a reaction.
     /// </summary>
     /// <param name="responseId">The Guid of the response to remove.</param>
-    public static async Task RemoveResponse(Guid responseId)
+    public static async Task<bool> RemoveResponse(Guid responseId)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
@@ -69,19 +71,21 @@ public static class Responses
         try
         {
             await command.ExecuteNonQueryAsync();
+            return true;
         }
         catch (Exception e)
         {
             Console.WriteLine(e);
+            return false;
         }
     }
     
-    public static async Task ModifyResponse(Guid responseId, string? trigger = null, string? response = null,
+    public static async Task<bool> ModifyResponse(Guid responseId, string? trigger = null, string? response = null,
         string? mediaAlias = null, string? mediaCategory = null, ulong? userId = null, bool? exact = null,
         bool? enabled = null)
     {
         if (trigger is null && response is null && mediaAlias is null && mediaCategory is null && userId is null
-            && exact is null && enabled is null) return;
+            && exact is null && enabled is null) return false;
         
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
@@ -141,10 +145,12 @@ public static class Responses
         try
         {
             await command.ExecuteNonQueryAsync();
+            return true;
         }
         catch (Exception e)
         {
             Console.WriteLine(e);
+            return false;
         }
     }
     

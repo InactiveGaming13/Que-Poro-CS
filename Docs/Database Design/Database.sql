@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS users
     id          NUMERIC PRIMARY KEY NOT NULL,
     created_at  TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
     username    TEXT                NOT NULL,
-    global_name TEXT                NOT NULL,
+    global_name TEXT,
     admin       BOOLEAN             NOT NULL DEFAULT FALSE,
     replied_to  BOOLEAN             NOT NULL DEFAULT TRUE,
     reacted_to  BOOLEAN             NOT NULL DEFAULT TRUE,
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS user_stats
     id              NUMERIC   NOT NULL
         CONSTRAINT user_id_fk
             REFERENCES users,
-    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at      TIMESTAMP NOT NULL,
     last_modified   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     sent            INTEGER   NOT NULL DEFAULT 0,
     deleted         INTEGER   NOT NULL DEFAULT 0,
@@ -47,10 +47,12 @@ CREATE TABLE IF NOT EXISTS guilds
     created_at                   TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
     name                         TEXT                NOT NULL,
     tracked                      BOOLEAN             NOT NULL DEFAULT TRUE,
-    temp_vc_channel              NUMERIC             NOT NULL DEFAULT 0,
+    temp_vc_channel              NUMERIC,
+    temp_vc_enabled              BOOLEAN             NOT NULL DEFAULT TRUE,
     temp_vc_default_member_limit INTEGER             NOT NULL DEFAULT 5,
     temp_vc_default_bitrate      INTEGER             NOT NULL DEFAULT 64,
-    roblox_alert_channel         NUMERIC             NOT NULL DEFAULT 0,
+    roblox_alert_channel         NUMERIC,
+    roblox_alert_enabled         BOOLEAN             NOT NULL DEFAULT TRUE,
     roblox_alert_interval        INTEGER             NOT NULL DEFAULT 60
 );
 
@@ -73,25 +75,28 @@ CREATE TABLE IF NOT EXISTS temp_vcs
     created_at TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by NUMERIC             NOT NULL,
     guild_id   NUMERIC             NOT NULL
-        CONSTRAINT guild_id_fk
+        CONSTRAINT guild_id_tv_fk
             REFERENCES guilds,
-    master     NUMERIC             NOT NULL UNIQUE,
+    master     NUMERIC             NOT NULL
+        CONSTRAINT user_id_tv_fk
+            REFERENCES users,
     name       TEXT                NOT NULL,
     bitrate    INTEGER             NOT NULL,
     user_limit INTEGER             NOT NULL,
-    user_count INTEGER             NOT NULL
+    user_count INTEGER             NOT NULL,
+    user_queue TEXT
 );
 
 CREATE TABLE IF NOT EXISTS config
 (
-    created_at                   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at                   TIMESTAMP NOT NULL,
     last_modified                TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status_type                  INTEGER   NOT NULL DEFAULT 0,
     status_message               TEXT      NOT NULL DEFAULT '',
     log_channel                  NUMERIC   NOT NULL DEFAULT 0,
     temp_vc_enabled              BOOLEAN   NOT NULL DEFAULT TRUE,
     temp_vc_default_member_limit INTEGER   NOT NULL DEFAULT 5,
-    temp_vc_default_bitrate      INTEGER   NOT NULL DEFAULT 64000,
+    temp_vc_default_bitrate      INTEGER   NOT NULL DEFAULT 64,
     roblox_alerts_enabled        BOOLEAN   NOT NULL DEFAULT TRUE,
     replies_enabled              BOOLEAN   NOT NULL DEFAULT TRUE,
     testers_enabled              BOOLEAN   NOT NULL DEFAULT FALSE,

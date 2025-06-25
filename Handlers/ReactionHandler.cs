@@ -23,6 +23,13 @@ public class ReactionCommands : ApplicationCommandsModule
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         
+        if (e.Member?.VoiceState is null || e.Guild is null)
+        {
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                "I do not work in DMs."));
+            return;
+        }
+        
         DiscordEmoji? discordEmoji = await ReactionHandler.GetEmoji(e.Client, emoji);
         if (discordEmoji is null)
         {
@@ -33,10 +40,13 @@ public class ReactionCommands : ApplicationCommandsModule
 
         UserRow? databaseUser = await Users.GetUser(e.UserId);
 
-        if (databaseUser is null)
-        {
-            await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName ?? e.User.Username);
+        if (databaseUser is null && await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName ?? e.User.Username))
             databaseUser = await Users.GetUser(e.UserId);
+        else
+        {
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                "An unexpected database error occured."));
+            return;
         }
 
         switch (user)
@@ -56,7 +66,12 @@ public class ReactionCommands : ApplicationCommandsModule
                 
             case null when databaseUser is { Admin: false}:
             case not null when user == e.User:
-                await Reactions.AddReaction(e.UserId, discordEmoji.Name, e.UserId, triggerMessage, exactTrigger);
+                if (!await Reactions.AddReaction(e.UserId, discordEmoji.Name, e.UserId, triggerMessage, exactTrigger))
+                {
+                    await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                        "An unexpected database error occured."));
+                    return;
+                }
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                     $"Added {emoji}{(triggerMessage is not null 
                         ? $" with {(exactTrigger ? "exact" : "")} trigger message `{triggerMessage}`" 
@@ -64,7 +79,12 @@ public class ReactionCommands : ApplicationCommandsModule
                 return;
 
             case not null when user != e.User && databaseUser is { Admin: true }:
-                await Reactions.AddReaction(e.UserId, discordEmoji.Name, user.Id, triggerMessage, exactTrigger);
+                if (!await Reactions.AddReaction(e.UserId, discordEmoji.Name, user.Id, triggerMessage, exactTrigger))
+                {
+                    await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                        "An unexpected database error occured."));
+                    return;
+                }
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                     $"Added {emoji}{(triggerMessage is not null 
                         ? $" with {(exactTrigger ? "exact" : "")} trigger message `{triggerMessage}`" 
@@ -89,6 +109,13 @@ public class ReactionCommands : ApplicationCommandsModule
         [Option("user", "The user you want to remove a reaction from")] DiscordUser? user = null)
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+        
+        if (e.Member?.VoiceState is null || e.Guild is null)
+        {
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                "I do not work in DMs."));
+            return;
+        }
 
         DiscordEmoji? discordEmoji = await ReactionHandler.GetEmoji(e.Client, emoji);
 
@@ -101,10 +128,15 @@ public class ReactionCommands : ApplicationCommandsModule
 
         UserRow? databaseUser = await Users.GetUser(e.UserId);
         
-        if (databaseUser is null)
+        if (databaseUser is null && await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName ?? e.User.Username))
         {
-            await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName ?? e.User.Username);
             databaseUser = await Users.GetUser(e.UserId);
+        }
+        else
+        {
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                "An unexpected database error occured."));
+            return;
         }
         
         Guid? authorEmojiId = await Reactions.GetReactionId(e.UserId, discordEmoji.Name);
@@ -152,6 +184,13 @@ public class ReactionCommands : ApplicationCommandsModule
         DiscordUser? user = null)
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+        
+        if (e.Member?.VoiceState is null || e.Guild is null)
+        {
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                "I do not work in DMs."));
+            return;
+        }
 
         List<ReactionRow> reactions;
         string title;

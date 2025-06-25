@@ -1,4 +1,5 @@
-﻿using Npgsql;
+﻿using System.Data;
+using Npgsql;
 using NpgsqlTypes;
 using QuePoro.Database.Types;
 
@@ -6,14 +7,14 @@ namespace QuePoro.Database.Handlers;
 
 public static class Guilds
 {
-    public static async Task AddGuild(ulong id, string name, bool tracked = true, ulong tempVcChannel = 0,
+    public static async Task<bool> AddGuild(ulong id, string name, bool tracked = true, ulong tempVcChannel = 0,
         int tempVcDefaultMemberLimit = 5, int tempVcDefaultBitrate = 64, ulong robloxAlertChannel = 0,
         int robloxAlertInterval = 60)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
         
-        string query = 
+        const string query = 
             "INSERT INTO guilds (id, name, tracked, temp_vc_channel, temp_vc_default_member_limit," +
             "temp_vc_default_bitrate, roblox_alert_channel, roblox_alert_interval) VALUES (@id, @name, @tracked," +
             " @tempVcChannel, @tempVcDefaultMemberLimit, @tempVcDefaultBitrate, @robloxAlertChannel, @robloxAlertInterval)";
@@ -31,118 +32,188 @@ public static class Guilds
         try
         {
             await command.ExecuteNonQueryAsync();
+            return true;
         }
         catch (Exception e)
         {
             Console.WriteLine(e);
+            return false;
         }
     }
     
-    public static async Task RemoveGuild(ulong id)
+    public static async Task<bool> RemoveGuild(ulong id)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
         
-        string query = "DELETE FROM guilds WHERE id=$1";
+        const string query = "DELETE FROM guilds WHERE id=@id";
 
         command.CommandText = query;
-        command.Parameters.AddWithValue(id);
+        command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
             
         try
         {
             await command.ExecuteNonQueryAsync();
+            return true;
         }
         catch (Exception e)
         {
             Console.WriteLine(e);
+            return false;
         }
     }
-
-    public static async Task ModifyGuild(ulong id, string? name = null, ulong? tempVcChannel = null,
-        int? tempVcMemberDefault = null, int? tempVcBitrateDefault = null, ulong? robloxAlertChannel = null,
-        int? robloxAlertInterval = null)
+    
+    public static async Task<bool> ModifyGuild(ulong id, string? name = null, ulong? tempVcChannel = null,
+        bool? tempVcEnabled = null, int? tempVcDefaultMemberLimit = null, int? tempVcDefaultBitrate = null,
+        ulong? robloxAlertChannel = null, bool? robloxAlertEnabled = null, int? robloxAlertInterval = null)
     {
-        if (name == null && tempVcChannel == null && tempVcMemberDefault == null && tempVcBitrateDefault == null &&
+        if (name == null && tempVcChannel == null && tempVcDefaultMemberLimit == null && tempVcDefaultBitrate == null &&
             robloxAlertChannel == null && robloxAlertInterval == null)
-            return;
+            return false;
         
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
             
-        string query = "UPDATE banned_phrases SET";
+        string query = "UPDATE guilds SET";
 
         if (name != null)
-            query += $" name='{name}',";
+        {
+            query += " name=@name,";
+            command.Parameters.Add(new NpgsqlParameter("name", NpgsqlDbType.Text) { Value = name });
+        }
 
-        if (tempVcChannel != null)
-            query += $" temp_vc_channel='{tempVcChannel}'";
+        if (tempVcChannel is not null)
+        {
+            query += " temp_vc_channel=@tempVcChannel";
+            command.Parameters.Add(tempVcChannel is 0 
+                ? new NpgsqlParameter("tempVcChannel", NpgsqlDbType.Numeric) { Value = DBNull.Value } 
+                : new NpgsqlParameter("tempVcChannel", NpgsqlDbType.Numeric) { Value = (long)tempVcChannel });
+        }
 
-        if (tempVcMemberDefault != null)
-            query += $" temp_vc_default_member_limit={tempVcMemberDefault},";
+        if (tempVcEnabled is not null)
+        {
+            query += " temp_vc_enabled=@tempVcEnabled";
+            command.Parameters.Add(new NpgsqlParameter("tempVcEnabled", NpgsqlDbType.Boolean)
+                { Value = tempVcEnabled });
+        }
 
-        if (tempVcBitrateDefault != null)
-            query += $" temp_vc_default_bitrate={tempVcBitrateDefault},";
+        if (tempVcDefaultMemberLimit != null)
+        {
+            query += " temp_vc_default_member_limit=@tempVcDefaultMemberLimit,";
+            command.Parameters.Add(new NpgsqlParameter("tempVcDefaultMemberLimit", NpgsqlDbType.Integer)
+                { Value = tempVcDefaultMemberLimit });
+        }
+
+        if (tempVcDefaultBitrate != null)
+        {
+            query += " temp_vc_default_bitrate=@tempVcDefaultBitrate,";
+            command.Parameters.Add(new NpgsqlParameter("tempVcDefaultBitrate", NpgsqlDbType.Integer)
+                { Value = tempVcDefaultBitrate });
+        }
+
+        if (robloxAlertChannel is not null)
+        {
+            query += " roblox_alert_channel=@robloxAlertChannel";
+            command.Parameters.Add(robloxAlertChannel is 0
+                ? new NpgsqlParameter("robloxAlertChannel", NpgsqlDbType.Numeric) { Value = DBNull.Value }
+                : new NpgsqlParameter("robloxAlertChannel", NpgsqlDbType.Numeric) { Value = (long)robloxAlertChannel });
+        }
         
-        if (robloxAlertChannel != null)
-            query += $" roblox_alert_channel={robloxAlertChannel},";
+        if (robloxAlertEnabled is not null)
+        {
+            query += " roblox_alert_enabled=@robloxAlertEnabled";
+            command.Parameters.Add(new NpgsqlParameter("robloxAlertEnabled", NpgsqlDbType.Boolean)
+                { Value = robloxAlertEnabled });
+        }
 
         if (robloxAlertInterval != null)
-            query += $" roblox_alert_interval={robloxAlertInterval}";
+        {
+            query += " roblox_alert_interval=@robloxAlertInterval";
+            command.Parameters.Add(new NpgsqlParameter("robloxAlertInterval", NpgsqlDbType.Integer)
+                { Value = robloxAlertInterval });
+        }
 
         if (query.EndsWith(','))
             query = query.Remove(query.Length - 1);
 
-        query += " WHERE id=$1";
+        query += " WHERE id=@id";
 
         command.CommandText = query;
-        command.Parameters.AddWithValue(id);
+        command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
             
         try
         {
             await command.ExecuteNonQueryAsync();
+            return true;
         }
         catch (Exception e)
         {
             Console.WriteLine(e);
+            return false;
         }
     }
     
-    public static async Task<GuildRow?> GetGuild(ulong id)
+    public static async Task<GuildRow> GetGuild(ulong id)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
         
-        string query = $"SELECT * FROM guilds WHERE id={id}";
+        const string query = $"SELECT * FROM guilds WHERE id=@id";
 
         command.CommandText = query;
+        command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
         
         await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            ulong guildId = (ulong)reader.GetInt64(reader.GetOrdinal("id"));
-            DateTime createdAt = reader.GetDateTime(reader.GetOrdinal("created_at"));
-            string guildName = reader.GetString(reader.GetOrdinal("name"));
-            bool tracked = reader.GetBoolean(reader.GetOrdinal("tracked"));
-            ulong tempVcChannel = (ulong)reader.GetInt64(reader.GetOrdinal("temp_vc_channel"));
-            short tempVcDefaultMemberLimit = reader.GetInt16(reader.GetOrdinal("temp_vc_default_member_limit"));
-            int tempVcDefaultBitrate = reader.GetInt32(reader.GetOrdinal("temp_vc_default_bitrate"));
-            ulong robloxAlertChannel = (ulong)reader.GetInt64(reader.GetOrdinal("roblox_alert_channel"));
-            int robloxAlertInterval = reader.GetInt32(reader.GetOrdinal("roblox_alert_interval"));
+            ulong? tempVcChannel = null;
+            try
+            {
+                tempVcChannel = (ulong)reader.GetInt64(reader.GetOrdinal("temp_vc_channel"));
+            }
+            catch (Exception)
+            {
+                // ignore
+            }
+            ulong? robloxAlertChannel = null;
+            try
+            {
+                robloxAlertChannel = (ulong)reader.GetInt64(reader.GetOrdinal("roblox_alert_channel"));
+            }
+            catch (Exception)
+            {
+                // ignore
+            }
 
             return new GuildRow
             {
-                Id = guildId,
-                CreatedAt = createdAt,
-                Name = guildName,
-                Tracked = tracked,
+                Id = (ulong)reader.GetInt64(reader.GetOrdinal("id")),
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
+                Name = reader.GetString(reader.GetOrdinal("name")),
+                Tracked = reader.GetBoolean(reader.GetOrdinal("tracked")),
                 TempVcChannel = tempVcChannel,
-                TempVcDefaultMemberLimit = tempVcDefaultMemberLimit,
-                TempVcDefaultBitrate = tempVcDefaultBitrate,
+                TempVcEnabled = reader.GetBoolean(reader.GetOrdinal("temp_vc_enabled")),
+                TempVcDefaultMemberLimit = reader.GetInt16(reader.GetOrdinal("temp_vc_default_member_limit")),
+                TempVcDefaultBitrate = reader.GetInt32(reader.GetOrdinal("temp_vc_default_bitrate")),
                 RobloxAlertChannel = robloxAlertChannel,
-                RobloxAlertInterval = robloxAlertInterval
+                RobloxAlertEnabled = reader.GetBoolean(reader.GetOrdinal("roblox_alert_enabled")),
+                RobloxAlertInterval = reader.GetInt32(reader.GetOrdinal("roblox_alert_interval"))
             };
         }
 
-        return null;
+        throw new KeyNotFoundException($"No Guild exists with id: {id}");
+    }
+    
+    public static async Task<bool> GuildExists(ulong id)
+    {
+        await using NpgsqlConnection connection = await Database.GetConnection();
+        await using NpgsqlCommand command = connection.CreateCommand();
+        
+        const string query = "SELECT created_at FROM guilds WHERE id=@id";
+        
+        command.CommandText = query;
+        command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
+
+        return command.ExecuteScalar() is not null;
     }
 }

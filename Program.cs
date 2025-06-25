@@ -23,16 +23,9 @@ internal class Program
         // Load the environment variables
         DotEnv.Load();
 
-        ConfigRow? config = await Config.GetConfig();
-
-        if (config == null)
-        {
-            await Config.AddConfig(0, "with my testes");
-            config = await Config.GetConfig();
-            Console.WriteLine($"Status: {config?.StatusMessage}");
-        }
-
-        await Config.ModifyConfig(0, "with my balls");
+        if (!await Config.ConfigExists())
+            await Config.AddConfig();
+        ConfigRow config = await Config.GetConfig();
 
         string? botToken = Environment.GetEnvironmentVariable("DISCORD_TOKEN");
         string? lavalinkHost = Environment.GetEnvironmentVariable("LAVALINK_HOST");
@@ -65,7 +58,7 @@ internal class Program
             // Sets the lavalink port to default if it wasn't set in the config.
             lavalinkPort ??= "2333";
             
-            var endpoint = new ConnectionEndpoint
+            ConnectionEndpoint endpoint = new ConnectionEndpoint
             {
                 Hostname = lavalinkHost,
                 Port = Convert.ToInt32(lavalinkPort)
@@ -90,7 +83,6 @@ internal class Program
         discord.MessageUpdated += MessageHandler.MessageUpdated;
         discord.GuildMemberAdded += GuildHandler.MemberAdded;
         discord.VoiceStateUpdated += VoiceHandler.VoiceStateUpdated;
-        discord.VoiceChannelStatusUpdated += VoiceHandler.VoiceChannelStatusUpdated;
         
         // Register ApplicationCommands
         ApplicationCommandsExtension appCommands = discord.UseApplicationCommands();
@@ -109,7 +101,7 @@ internal class Program
         appCommands.RegisterGlobalCommands<VoiceCommands>();
         
         // Handle the bot Ready event
-        discord.Ready += async (s, e) =>
+        discord.Ready += async (client, e) =>
         {
             if (usingLavalink && lavalink is not null && lavalinkConfiguration is not null)
             {
@@ -128,15 +120,12 @@ internal class Program
             
             Console.WriteLine("Checking config...");
 
-            if (config == null)
-            {
-                Console.WriteLine("Bot is ready.");
-                return;
-            }
+            if (config.TempVcEnabled)
+                await CreateAVcHandler.ValidateTempVcs(client);
 
             if (config.ShutdownChannel != 0 && config.ShutdownMessage != 0)
             {
-                DiscordChannel channel = await s.GetChannelAsync(config.ShutdownChannel);
+                DiscordChannel channel = await client.GetChannelAsync(config.ShutdownChannel);
                 DiscordMessage? message = await channel.TryGetMessageAsync(config.ShutdownMessage);
 
                 if (message is not null)
@@ -144,6 +133,7 @@ internal class Program
                     Console.WriteLine("Deleting shutdown message...");
                     await message.DeleteAsync();
                     await Config.ModifyConfig(shutdownChannel: 0, shutdownMessage: 0);
+                    Console.WriteLine("Shutdown message deleted.");
                 }
             }
 
@@ -169,6 +159,7 @@ internal class Program
             
             Console.WriteLine("Setting status...");
             await discord.UpdateStatusAsync(new DiscordActivity(config.StatusMessage, (ActivityType)activityType), UserStatus.Online);
+            Console.WriteLine("Status set.");
             Console.WriteLine("Bot is ready.");
         };
         

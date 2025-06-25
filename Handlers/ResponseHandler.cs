@@ -31,22 +31,38 @@ public class ResponseCommands : ApplicationCommandsModule
         bool exact = false)
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+        
+        if (e.Member?.VoiceState is null || e.Guild is null)
+        {
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                "I do not work in DMs."));
+            return;
+        }
 
         UserRow? databaseUser = await Users.GetUser(e.UserId);
 
-        if (databaseUser is null)
-        {
-            await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName ?? e.User.Username);
+        if (databaseUser is null && await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName ?? e.User.Username))
             databaseUser = await Users.GetUser(e.UserId);
+        else
+        {
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                "An unexpected database error occured."));
+            return;
         }
+        
         string responseMessage;
 
         switch (user)
         {
             case not null when user == e.User &&
                                (response is not null || mediaAlias is not null || mediaCategory is not null):
-                await Responses.AddResponse(e.UserId, message, userId: e.UserId, response: response,
-                    mediaAlias: mediaAlias, mediaCategory: mediaCategory, channelId: channel?.Id, exactTrigger: exact);
+                if (!await Responses.AddResponse(e.UserId, message, userId: e.UserId, response: response,
+                        mediaAlias: mediaAlias, mediaCategory: mediaCategory, channelId: channel?.Id, exactTrigger: exact))
+                {
+                    await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                        "An unexpected database error occured."));
+                    return;
+                }
                 responseMessage =
                     $"Added response to {(exact ? "exact" : "")} trigger `{message}` with" +
                     $"{(string.IsNullOrEmpty(response) ? "" : $" response `{response}`,")}" +
@@ -60,8 +76,13 @@ public class ResponseCommands : ApplicationCommandsModule
                 return;
 
             case not null when user != e.User && response is not null && databaseUser is { Admin: true }:
-                await Responses.AddResponse(e.UserId, message, userId: e.UserId, response: response,
-                    channelId: channel?.Id, mediaAlias: mediaAlias, mediaCategory: mediaCategory, exactTrigger: exact);
+                if (!await Responses.AddResponse(e.UserId, message, userId: e.UserId, response: response,
+                        channelId: channel?.Id, mediaAlias: mediaAlias, mediaCategory: mediaCategory, exactTrigger: exact))
+                {
+                    await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                        "An unexpected database error occured."));
+                    return;
+                }
                 responseMessage =
                     $"Added response to {(exact ? "exact" : "")} trigger `{message}` with" +
                     $"{(string.IsNullOrEmpty(response) ? "" : $" response `{response}`")}," +
@@ -79,8 +100,13 @@ public class ResponseCommands : ApplicationCommandsModule
                 return;
 
             case null when response is not null && databaseUser is { Admin: true }:
-                await Responses.AddResponse(e.UserId, message, response: response, mediaAlias: mediaAlias,
-                    mediaCategory: mediaCategory, exactTrigger: exact);
+                if (!await Responses.AddResponse(e.UserId, message, response: response, mediaAlias: mediaAlias,
+                        mediaCategory: mediaCategory, exactTrigger: exact))
+                {
+                    await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                        "An unexpected database error occured."));
+                    return;
+                }
                 responseMessage =
                     $"Added global response to {(exact ? "exact" : "")} trigger `{message}` with" +
                     $"{(string.IsNullOrEmpty(response) ? "" : $" response `{response}`,")}" +
@@ -92,13 +118,23 @@ public class ResponseCommands : ApplicationCommandsModule
                 return;
 
             case null when mediaAlias is not null && databaseUser is { Admin: true }:
-                await Responses.AddResponse(e.UserId, message, mediaAlias: mediaAlias, exactTrigger: exact);
+                if (!await Responses.AddResponse(e.UserId, message, mediaAlias: mediaAlias, exactTrigger: exact))
+                {
+                    await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                        "An unexpected database error occured."));
+                    return;
+                }
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                     $"Added global response to {(exact ? "exact" : "")} trigger `{message}` with media alias `{mediaAlias}`."));
                 return;
 
             case null when mediaCategory is not null && databaseUser is { Admin: true }:
-                await Responses.AddResponse(e.UserId, message, mediaCategory: mediaCategory, exactTrigger: exact);
+                if (!await Responses.AddResponse(e.UserId, message, mediaCategory: mediaCategory, exactTrigger: exact))
+                {
+                    await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                        "An unexpected database error occured."));
+                    return;
+                }
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                     $"Added global response to {(exact ? "exact" : "")} trigger `{message}` with media category `{mediaCategory}`."));
                 return;
@@ -136,6 +172,13 @@ public class ResponseCommands : ApplicationCommandsModule
         bool? enabled = null)
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+        
+        if (e.Member?.VoiceState is null || e.Guild is null)
+        {
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                "I do not work in DMs."));
+            return;
+        }
 
         Guid? responseId = await ResponseHandler.HandleResponseCommand(e, trigger, response, mediaAlias, mediaCategory,
             user, channel, exact, enabled);
@@ -156,6 +199,13 @@ public class ResponseCommands : ApplicationCommandsModule
         DiscordChannel? channel = null)
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+        
+        if (e.Member?.VoiceState is null || e.Guild is null)
+        {
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                "I do not work in DMs."));
+            return;
+        }
 
         string title = "";
         List<ResponseRow> responses = [];
@@ -227,6 +277,13 @@ public class ResponseCommands : ApplicationCommandsModule
         bool? exact = null)
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+        
+        if (e.Member?.VoiceState is null || e.Guild is null)
+        {
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                "I do not work in DMs."));
+            return;
+        }
 
         Guid? responseId = await ResponseHandler.HandleResponseCommand(e, trigger, response, mediaAlias, mediaCategory,
             user, channel, exact);
@@ -258,6 +315,13 @@ public class ResponseCommands : ApplicationCommandsModule
         bool? exact = null)
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+        
+        if (e.Member?.VoiceState is null || e.Guild is null)
+        {
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                "I do not work in DMs."));
+            return;
+        }
 
         Guid? responseId = await ResponseHandler.HandleResponseCommand(e, trigger, response, mediaAlias, mediaCategory,
             user, channel, exact);
@@ -273,7 +337,14 @@ public class ResponseCommands : ApplicationCommandsModule
     [SlashCommand("types", "Displays the response types for response messages")]
     public static async Task ResponseTypes(InteractionContext e)
     {
-        await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource, new DiscordInteractionResponseBuilder().AsEphemeral());
+        await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+        
+        if (e.Member?.VoiceState is null || e.Guild is null)
+        {
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                "I do not work in DMs."));
+            return;
+        }
         
         string content =
             $"<userMention> - Replaced with the authors mention (e.g <userMention> -> {e.User.Mention})\n" +
@@ -358,10 +429,13 @@ public class ResponseHandler()
 
         UserRow? databaseUser = await Users.GetUser(e.UserId);
         
-        if (databaseUser is null)
-        {
-            await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName ?? e.User.Username);
+        if (databaseUser is null && await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName ?? e.User.Username))
             databaseUser = await Users.GetUser(e.UserId);
+        else
+        {
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                "An unexpected database error occured."));
+            return null;
         }
 
         if (user is not null && user != e.User && databaseUser is { Admin: false })

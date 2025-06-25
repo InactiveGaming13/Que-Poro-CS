@@ -6,7 +6,7 @@ namespace QuePoro.Database.Handlers;
 
 public static class BannedPhrases
 {
-        public static async Task AddPhrase(ulong creatorId, int severity, string phrase, bool enabled = true)
+        public static async Task<bool> AddPhrase(ulong creatorId, int severity, string phrase, bool enabled = true)
         {
             await using NpgsqlConnection connection = await Database.GetConnection();
             await using NpgsqlCommand command = connection.CreateCommand();
@@ -23,6 +23,7 @@ public static class BannedPhrases
             try
             {
                 await command.ExecuteNonQueryAsync();
+                return true;
             }
             catch (Exception e)
             {
@@ -30,10 +31,11 @@ public static class BannedPhrases
                     Console.WriteLine("Phrase already exists!");
                 
                 Console.WriteLine(e);
+                return false;
             }
         }
         
-        public static async Task RemovePhrase(Guid id)
+        public static async Task<bool> RemovePhrase(Guid id)
         {
             await using NpgsqlConnection connection = await Database.GetConnection();
             await using NpgsqlCommand command = connection.CreateCommand();
@@ -45,18 +47,20 @@ public static class BannedPhrases
             try
             {
                 await command.ExecuteNonQueryAsync();
+                return true;
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
+                return false;
             }
         }
 
-        public static async Task ModifyPhrase(Guid id, ulong? guildId = null, int? severity = null,
+        public static async Task<bool> ModifyPhrase(Guid id, ulong? guildId = null, int? severity = null,
             string? phrase = null, bool? enabled = null)
         {
             if (guildId is null && severity is null && phrase is null && enabled is null)
-                return;
+                return false;
             
             await using NpgsqlConnection connection = await Database.GetConnection();
             await using NpgsqlCommand command = connection.CreateCommand();
@@ -98,10 +102,12 @@ public static class BannedPhrases
             try
             {
                 await command.ExecuteNonQueryAsync();
+                return true;
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
+                return false;
             }
         }
 

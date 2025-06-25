@@ -6,12 +6,12 @@ namespace QuePoro.Database.Handlers;
 
 public static class Channels
 {
-    public static async Task AddChannel(ulong id, ulong guildId, string name, string? description = null, int messages = 0)
+    public static async Task<bool> AddChannel(ulong id, ulong guildId, string name, string? description = null, int messages = 0)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
         
-        string query =
+        const string query = 
             "INSERT INTO channels (id, guild_id, name, description, messages) VALUES " + 
             "(@id, @guildId, @name, @description, @messages)";
 
@@ -27,19 +27,21 @@ public static class Channels
         try
         {
             await command.ExecuteNonQueryAsync();
+            return true;
         }
         catch (Exception e)
         {
             Console.WriteLine(e);
+            return false;
         }
     }
     
-    public static async Task RemoveChannel(ulong id)
+    public static async Task<bool> RemoveChannel(ulong id)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
 
-        string query = "DELETE FROM channels WHERE id=@id";
+        const string query = "DELETE FROM channels WHERE id=@id";
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
@@ -47,18 +49,20 @@ public static class Channels
         try
         {
             await command.ExecuteNonQueryAsync();
+            return true;
         }
         catch (Exception e)
         {
             Console.WriteLine(e);
+            return false;
         }
     }
 
-    public static async Task ModifyChannel(ulong id, ulong? guildId = null, string? name = null,
+    public static async Task<bool> ModifyChannel(ulong id, ulong? guildId = null, string? name = null,
         string? description = null, int? messages = null)
     {
         if (guildId == null && name == null && description == null && messages == null)
-            return;
+            return false;
         
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
@@ -100,14 +104,16 @@ public static class Channels
         try
         {
             await command.ExecuteNonQueryAsync();
+            return true;
         }
         catch (Exception e)
         {
             Console.WriteLine(e);
+            return false;
         }
     }
 
-    public static async Task<ChannelRow?> GetChannel(ulong id)
+    public static async Task<ChannelRow> GetChannel(ulong id)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
@@ -156,6 +162,19 @@ public static class Channels
             throw;
         }
 
-        return null;
+        throw new KeyNotFoundException($"No Channel could be found with id: {id}");
+    }
+    
+    public static async Task<bool> ChannelExists(ulong id)
+    {
+        await using NpgsqlConnection connection = await Database.GetConnection();
+        await using NpgsqlCommand command = connection.CreateCommand();
+        
+        const string query = "SELECT created_at FROM channels WHERE id=@id";
+        
+        command.CommandText = query;
+        command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
+
+        return command.ExecuteScalar() is not null;
     }
 }

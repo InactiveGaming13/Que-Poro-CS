@@ -43,13 +43,12 @@ public static class Reactions
     /// Removes a reaction.
     /// </summary>
     /// <param name="reactionId">The Guid of the reaction to remove.</param>
-    public static async Task RemoveReaction(Guid reactionId)
+    public static async Task<bool> RemoveReaction(Guid reactionId)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
         
-        string query =
-            "DELETE FROM reactions WHERE id=@id";
+        const string query = "DELETE FROM reactions WHERE id=@id";
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Uuid) { Value = reactionId });
@@ -57,10 +56,12 @@ public static class Reactions
         try
         {
             await command.ExecuteNonQueryAsync();
+            return true;
         }
         catch (Exception e)
         {
             Console.WriteLine(e);
+            return false;
         }
     }
 

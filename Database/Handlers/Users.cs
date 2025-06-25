@@ -6,7 +6,7 @@ namespace QuePoro.Database.Handlers;
 
 public static class Users
 {
-    public static async Task AddUser(ulong userId, string username, string globalName, bool admin = false,
+    public static async Task<bool> AddUser(ulong userId, string username, string? globalName, bool admin = false,
         bool repliedTo = true, bool tracked = true, bool banned = false)
     {
         if ((long)userId == Convert.ToInt64(Environment.GetEnvironmentVariable("BOT_OWNER_ID")))
@@ -21,7 +21,9 @@ public static class Users
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)userId });
         command.Parameters.Add(new NpgsqlParameter("username", NpgsqlDbType.Text) { Value = username });
-        command.Parameters.Add(new NpgsqlParameter("globalName", NpgsqlDbType.Text) { Value = globalName });
+        command.Parameters.Add(globalName is null
+        ? new NpgsqlParameter("globalName", NpgsqlDbType.Text) { Value = DBNull.Value }
+        : new NpgsqlParameter("globalName", NpgsqlDbType.Text) { Value = globalName });
         command.Parameters.Add(new NpgsqlParameter("admin", NpgsqlDbType.Boolean) { Value = admin });
         command.Parameters.Add(new NpgsqlParameter("repliedTo", NpgsqlDbType.Boolean) { Value = repliedTo });
         command.Parameters.Add(new NpgsqlParameter("tracked", NpgsqlDbType.Boolean) { Value = tracked });
@@ -30,19 +32,21 @@ public static class Users
         try
         {
             await command.ExecuteNonQueryAsync();
+            return true;
         }
         catch (Exception e)
         {
             Console.WriteLine(e);
+            return false;
         }
     }
 
-    public static async Task RemoveUser(ulong userId)
+    public static async Task<bool> RemoveUser(ulong userId)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
         
-        string query = "DELETE FROM users WHERE id=@id";
+        const string query = "DELETE FROM users WHERE id=@id";
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = userId });
@@ -50,19 +54,21 @@ public static class Users
         try
         {
             await command.ExecuteNonQueryAsync();
+            return true;
         }
         catch (Exception e)
         {
             Console.WriteLine(e);
+            return false;
         }
     }
 
-    public static async Task<UserRow?> GetUser(ulong id)
+    public static async Task<UserRow> GetUser(ulong id)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
         
-        string query = $"SELECT * FROM users WHERE id=@id";
+        const string query = $"SELECT * FROM users WHERE id=@id";
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
@@ -94,6 +100,19 @@ public static class Users
             };
         }
 
-        return null;
+        throw new KeyNotFoundException($"No User was found with id: {id}");
+    }
+    
+    public static async Task<bool> UserExists(ulong id)
+    {
+        await using NpgsqlConnection connection = await Database.GetConnection();
+        await using NpgsqlCommand command = connection.CreateCommand();
+        
+        const string query = "SELECT created_at FROM users WHERE id=@id";
+        
+        command.CommandText = query;
+        command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
+
+        return command.ExecuteScalar() is not null;
     }
 }

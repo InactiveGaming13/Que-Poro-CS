@@ -6,15 +6,15 @@ namespace QuePoro.Database.Handlers;
 
 public class UserStats
 {
-    public static async Task AddUser(ulong userId, int sent = 0, int deleted = 0, int edited = 0, int tempVcCreated = 0,
+    public static async Task<bool> AddStat(ulong userId, int sent = 0, int deleted = 0, int edited = 0, int tempVcCreated = 0,
         int modActions = 0, int strikes = 0)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
         
-        string query =
-            "INSERT INTO user_stats (id, sent, deleted, edited, temp_vc_created, mod_actions, strikes) " +
-            "VALUES (@id, @sent, @deleted, @edited, @tempVcCreated, @modActions, @strikes)";
+        const string query = "INSERT INTO user_stats (id, created_at, sent, deleted, edited, temp_vc_created, " +
+            "mod_actions, strikes) VALUES (@id, CURRENT_TIMESTAMP, @sent, @deleted, @edited, @tempVcCreated, " +
+            "@modActions, @strikes)";
         
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)userId });
@@ -28,19 +28,21 @@ public class UserStats
         try
         {
             await command.ExecuteNonQueryAsync();
+            return true;
         }
         catch (Exception e)
         {
             Console.WriteLine(e);
+            return false;
         }
     }
     
-    public static async Task<UserStatRow?> GetUser(ulong id)
+    public static async Task<UserStatRow> GetStat(ulong id)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
         
-        string query = "SELECT * FROM user_stats WHERE id=@id";
+        const string query = "SELECT * FROM user_stats WHERE id=@id";
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
@@ -68,12 +70,15 @@ public class UserStats
             };
         }
 
-        return null;
+        throw new KeyNotFoundException($"No User Stat was found with id: {id}");
     }
 
-    public static async Task ModifyUser(ulong userId, int? sent = null, int? deleted = null, int? edited = null,
+    public static async Task<bool> ModifyStat(ulong userId, int? sent = null, int? deleted = null, int? edited = null,
         int? tempVcCreated = null, int? modActions = null, int? strikes = null)
     {
+        if (sent is null && deleted is null && edited is null && tempVcCreated is null && modActions is null &&
+            strikes is null) return false;
+        
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
         
@@ -126,10 +131,25 @@ public class UserStats
         try
         {
             await command.ExecuteNonQueryAsync();
+            return true;
         }
         catch (Exception e)
         {
             Console.WriteLine(e);
+            return false;
         }
+    }
+    
+    public static async Task<bool> StatExists(ulong id)
+    {
+        await using NpgsqlConnection connection = await Database.GetConnection();
+        await using NpgsqlCommand command = connection.CreateCommand();
+        
+        const string query = "SELECT created_at FROM user_stats WHERE id=@id";
+        
+        command.CommandText = query;
+        command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
+
+        return command.ExecuteScalar() is not null;
     }
 }
