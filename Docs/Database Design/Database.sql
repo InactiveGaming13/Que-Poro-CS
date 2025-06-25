@@ -13,34 +13,6 @@ DROP TABLE IF EXISTS guilds CASCADE;
 CREATE
     EXTENSION IF NOT EXISTS "uuid-ossp";
 
-CREATE TABLE IF NOT EXISTS users
-(
-    id          NUMERIC PRIMARY KEY NOT NULL,
-    created_at  TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    username    TEXT                NOT NULL,
-    global_name TEXT,
-    admin       BOOLEAN             NOT NULL DEFAULT FALSE,
-    replied_to  BOOLEAN             NOT NULL DEFAULT TRUE,
-    reacted_to  BOOLEAN             NOT NULL DEFAULT TRUE,
-    tracked     BOOLEAN             NOT NULL DEFAULT TRUE,
-    banned      BOOLEAN             NOT NULL DEFAULT FALSE
-);
-
-CREATE TABLE IF NOT EXISTS user_stats
-(
-    id              NUMERIC   NOT NULL
-        CONSTRAINT user_id_fk
-            REFERENCES users,
-    created_at      TIMESTAMP NOT NULL,
-    last_modified   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    sent            INTEGER   NOT NULL DEFAULT 0,
-    deleted         INTEGER   NOT NULL DEFAULT 0,
-    edited          INTEGER   NOT NULL DEFAULT 0,
-    temp_vc_created INTEGER   NOT NULL DEFAULT 0,
-    mod_actions     INTEGER   NOT NULL DEFAULT 0,
-    strikes         INTEGER   NOT NULL DEFAULT 0
-);
-
 CREATE TABLE IF NOT EXISTS guilds
 (
     id                           NUMERIC PRIMARY KEY NOT NULL,
@@ -67,6 +39,40 @@ CREATE TABLE IF NOT EXISTS channels
             REFERENCES guilds,
     description TEXT,
     messages    INTEGER             NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS users
+(
+    id          NUMERIC PRIMARY KEY NOT NULL,
+    created_at  TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    username    TEXT                NOT NULL,
+    global_name TEXT,
+    admin       BOOLEAN             NOT NULL DEFAULT FALSE,
+    replied_to  BOOLEAN             NOT NULL DEFAULT TRUE,
+    reacted_to  BOOLEAN             NOT NULL DEFAULT TRUE,
+    tracked     BOOLEAN             NOT NULL DEFAULT TRUE,
+    banned      BOOLEAN             NOT NULL DEFAULT FALSE
+);
+
+CREATE TABLE IF NOT EXISTS user_stats
+(
+    id              NUMERIC   NOT NULL
+        CONSTRAINT user_stats_user_id_fk
+            REFERENCES users,
+    created_at      TIMESTAMP NOT NULL,
+    last_modified   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    guild_id        NUMERIC   NOT NULL
+        CONSTRAINT user_stats_guild_id_fk
+            REFERENCES guilds,
+    channel_id      NUMERIC   NOT NULL
+        CONSTRAINT user_stats_channel_id_fk
+            REFERENCES channels,
+    sent            INTEGER   NOT NULL DEFAULT 0,
+    deleted         INTEGER   NOT NULL DEFAULT 0,
+    edited          INTEGER   NOT NULL DEFAULT 0,
+    temp_vc_created INTEGER   NOT NULL DEFAULT 0,
+    mod_actions     INTEGER   NOT NULL DEFAULT 0,
+    strikes         INTEGER   NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS temp_vcs
