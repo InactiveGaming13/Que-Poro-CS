@@ -14,19 +14,16 @@
     </Target>
 
     <ItemGroup>
-      <PackageReference Include="DisCatSharp" Version="10.7.0-nightly-006" />
+      <PackageReference Include="DisCatSharp" Version="10.7.0-nightly-007" />
       <PackageReference Include="DisCatSharp.Analyzer.Roselyn" Version="6.2.5">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
-      <PackageReference Include="DisCatSharp.ApplicationCommands" Version="10.6.7" />
-      <PackageReference Include="DisCatSharp.Lavalink" Version="10.6.7" />
+      <PackageReference Include="DisCatSharp.ApplicationCommands" Version="10.7.0-nightly-007" />
+      <PackageReference Include="DisCatSharp.Lavalink" Version="10.7.0-nightly-007" />
       <PackageReference Include="dotenv.net" Version="3.2.1" />
+      <PackageReference Include="log4net" Version="3.1.0" />
       <PackageReference Include="Npgsql" Version="9.0.3" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Database\Types\" />
     </ItemGroup>
 
 </Project>

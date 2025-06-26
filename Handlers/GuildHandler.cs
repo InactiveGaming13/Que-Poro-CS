@@ -3,7 +3,7 @@ using DisCatSharp.EventArgs;
 
 namespace QuePoro.Handlers;
 
-public class GuildHandler
+public static class GuildHandler
 {
     public static async Task MemberAdded(DiscordClient s, GuildMemberAddEventArgs e)
     {

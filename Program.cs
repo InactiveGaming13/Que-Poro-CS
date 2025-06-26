@@ -6,20 +6,26 @@ using DisCatSharp.Lavalink;
 using DisCatSharp.Net;
 using dotenv.net;
 using QuePoro.Handlers;
+using QuePoro.Database.Handlers;
+using QuePoro.Database.Types;
 
 namespace QuePoro;
 
-internal class Program
+internal static class Program
 {
-    static void Main(string[] args)
+    private static void Main()
     {
         MainAsync().GetAwaiter().GetResult();
     }
 
-    static async Task MainAsync()
+    private static async Task MainAsync()
     {
         // Load the environment variables
         DotEnv.Load();
+
+        if (!await Config.ConfigExists())
+            await Config.AddConfig();
+        ConfigRow config = await Config.GetConfig();
 
         string? botToken = Environment.GetEnvironmentVariable("DISCORD_TOKEN");
         string? lavalinkHost = Environment.GetEnvironmentVariable("LAVALINK_HOST");
@@ -47,12 +53,12 @@ internal class Program
             Intents = DiscordIntents.All
         });
 
-        if (usingLavalink)
+        if (usingLavalink && lavalinkHost is not null && lavalinkPassword is not null)
         {
             // Sets the lavalink port to default if it wasn't set in the config.
             lavalinkPort ??= "2333";
             
-            var endpoint = new ConnectionEndpoint
+            ConnectionEndpoint endpoint = new ConnectionEndpoint
             {
                 Hostname = lavalinkHost,
                 Port = Convert.ToInt32(lavalinkPort)
@@ -63,7 +69,8 @@ internal class Program
                 Password = lavalinkPassword,
                 RestEndpoint = endpoint,
                 SocketEndpoint = endpoint,
-                EnableBuiltInQueueSystem = true
+                EnableBuiltInQueueSystem = true,
+                DefaultVolume = 15
             };
 
             // Enable voice for the bot
@@ -76,25 +83,29 @@ internal class Program
         discord.MessageUpdated += MessageHandler.MessageUpdated;
         discord.GuildMemberAdded += GuildHandler.MemberAdded;
         discord.VoiceStateUpdated += VoiceHandler.VoiceStateUpdated;
-        discord.VoiceChannelStatusUpdated += VoiceHandler.VoiceChannelStatusUpdated;
         
         // Register ApplicationCommands
         ApplicationCommandsExtension appCommands = discord.UseApplicationCommands();
         appCommands.RegisterGlobalCommands<AdminCommands>();
+        appCommands.RegisterGlobalCommands<BannedPhraseCommands>();
         appCommands.RegisterGlobalCommands<ConfigCommands>();
         appCommands.RegisterGlobalCommands<CreateAVcCommands>();
-        appCommands.RegisterGlobalCommands<MessageManager>();
+        appCommands.RegisterGlobalCommands<MessageCommands>();
         appCommands.RegisterGlobalCommands<MusicCommands>();
+        appCommands.RegisterGlobalCommands<PrivacyCommands>();
         appCommands.RegisterGlobalCommands<ReactionCommands>();
+        appCommands.RegisterGlobalCommands<ResponseCommands>();
         appCommands.RegisterGlobalCommands<TempVcCommands>();
-        appCommands.RegisterGuildCommands<TesterCommands>(1023182344087146546);
+        if (config is { TestersEnabled: true })
+            appCommands.RegisterGlobalCommands<TesterCommands>();
+        else
+            appCommands.RegisterGuildCommands<TesterCommands>(1023182344087146546);
         appCommands.RegisterGlobalCommands<VoiceCommands>();
         
         // Handle the bot Ready event
-        discord.Ready += async (s, e) =>
+        discord.Ready += async (client, _) =>
         {
-            await discord.UpdateStatusAsync(new DiscordActivity("with my testes", ActivityType.Playing), UserStatus.Online);
-            if (usingLavalink)
+            if (usingLavalink && lavalink is not null && lavalinkConfiguration is not null)
             {
                 try
                 {
@@ -107,13 +118,40 @@ internal class Program
                 }
             }
             else
-                Console.WriteLine("Not using lavalink");
+                Console.WriteLine("Lavalink is disabled");
+            
+            Console.WriteLine("Checking config...");
+
+            if (config.TempVcEnabled)
+                await CreateAVcHandler.ValidateTempVcs(client);
+
+            if (string.IsNullOrEmpty(config.StatusMessage))
+            {
+                Console.WriteLine("Bot is ready.");
+                return;
+            }
+
+            ActivityType? activityType = config.StatusType switch
+            {
+                0 => ActivityType.Playing,
+                2 => ActivityType.ListeningTo,
+                3 => ActivityType.Watching,
+                _ => null
+            };
+
+            if (activityType == null)
+            {
+                Console.WriteLine("Bot is ready.");
+                return;
+            }
+            
+            Console.WriteLine("Setting status...");
+            await discord.UpdateStatusAsync(new DiscordActivity(config.StatusMessage, (ActivityType)activityType), UserStatus.Online);
+            Console.WriteLine("Status set.");
             Console.WriteLine("Bot is ready.");
         };
         
-        //await Database.Database.DatabaseThings();
-        
-        // Connect to discord and stop the app from closing prematurely
+        // Connect to discord and stop the app from closing prematurely.
         await discord.ConnectAsync();
         await Task.Delay(-1);
     }
