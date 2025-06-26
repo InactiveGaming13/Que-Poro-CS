@@ -13,6 +13,4 @@ public class ConfigRow
     public required bool RobloxAlertsEnabled { get; set; }
     public required bool RepliesEnabled { get; set; }
     public required bool TestersEnabled { get; set; }
-    public required ulong ShutdownChannel { get; set; }
-    public required ulong ShutdownMessage { get; set; }
 }

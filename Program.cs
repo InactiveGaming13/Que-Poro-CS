@@ -11,14 +11,14 @@ using QuePoro.Database.Types;
 
 namespace QuePoro;
 
-internal class Program
+internal static class Program
 {
-    static void Main(string[] args)
+    private static void Main()
     {
         MainAsync().GetAwaiter().GetResult();
     }
 
-    static async Task MainAsync()
+    private static async Task MainAsync()
     {
         // Load the environment variables
         DotEnv.Load();
@@ -53,7 +53,7 @@ internal class Program
             Intents = DiscordIntents.All
         });
 
-        if (usingLavalink)
+        if (usingLavalink && lavalinkHost is not null && lavalinkPassword is not null)
         {
             // Sets the lavalink port to default if it wasn't set in the config.
             lavalinkPort ??= "2333";
@@ -87,6 +87,7 @@ internal class Program
         // Register ApplicationCommands
         ApplicationCommandsExtension appCommands = discord.UseApplicationCommands();
         appCommands.RegisterGlobalCommands<AdminCommands>();
+        appCommands.RegisterGlobalCommands<BannedPhraseCommands>();
         appCommands.RegisterGlobalCommands<ConfigCommands>();
         appCommands.RegisterGlobalCommands<CreateAVcCommands>();
         appCommands.RegisterGlobalCommands<MessageCommands>();
@@ -102,7 +103,7 @@ internal class Program
         appCommands.RegisterGlobalCommands<VoiceCommands>();
         
         // Handle the bot Ready event
-        discord.Ready += async (client, e) =>
+        discord.Ready += async (client, _) =>
         {
             if (usingLavalink && lavalink is not null && lavalinkConfiguration is not null)
             {
@@ -123,20 +124,6 @@ internal class Program
 
             if (config.TempVcEnabled)
                 await CreateAVcHandler.ValidateTempVcs(client);
-
-            if (config.ShutdownChannel != 0 && config.ShutdownMessage != 0)
-            {
-                DiscordChannel channel = await client.GetChannelAsync(config.ShutdownChannel);
-                DiscordMessage? message = await channel.TryGetMessageAsync(config.ShutdownMessage);
-
-                if (message is not null)
-                {
-                    Console.WriteLine("Deleting shutdown message...");
-                    await message.DeleteAsync();
-                    await Config.ModifyConfig(shutdownChannel: 0, shutdownMessage: 0);
-                    Console.WriteLine("Shutdown message deleted.");
-                }
-            }
 
             if (string.IsNullOrEmpty(config.StatusMessage))
             {

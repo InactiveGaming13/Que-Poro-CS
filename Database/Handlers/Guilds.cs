@@ -1,5 +1,4 @@
-﻿using System.Data;
-using Npgsql;
+﻿using Npgsql;
 using NpgsqlTypes;
 using QuePoro.Database.Types;
 
@@ -7,6 +6,18 @@ namespace QuePoro.Database.Handlers;
 
 public static class Guilds
 {
+    /// <summary>
+    /// Adds a Guild to the database.
+    /// </summary>
+    /// <param name="id">The ID of the Guild.</param>
+    /// <param name="name">The name of the Guild.</param>
+    /// <param name="tracked"></param>
+    /// <param name="tempVcChannel"></param>
+    /// <param name="tempVcDefaultMemberLimit"></param>
+    /// <param name="tempVcDefaultBitrate"></param>
+    /// <param name="robloxAlertChannel"></param>
+    /// <param name="robloxAlertInterval"></param>
+    /// <returns>Whether the operation succeeds.</returns>
     public static async Task<bool> AddGuild(ulong id, string name, bool tracked = true, ulong tempVcChannel = 0,
         int tempVcDefaultMemberLimit = 5, int tempVcDefaultBitrate = 64, ulong robloxAlertChannel = 0,
         int robloxAlertInterval = 60)
@@ -15,9 +26,10 @@ public static class Guilds
         await using NpgsqlCommand command = connection.CreateCommand();
         
         const string query = 
-            "INSERT INTO guilds (id, name, tracked, temp_vc_channel, temp_vc_default_member_limit," +
-            "temp_vc_default_bitrate, roblox_alert_channel, roblox_alert_interval) VALUES (@id, @name, @tracked," +
-            " @tempVcChannel, @tempVcDefaultMemberLimit, @tempVcDefaultBitrate, @robloxAlertChannel, @robloxAlertInterval)";
+            "INSERT INTO guilds (id, created_at, name, tracked, temp_vc_channel, temp_vc_default_member_limit," +
+            "temp_vc_default_bitrate, roblox_alert_channel, roblox_alert_interval) VALUES (@id, CURRENT_TIMESTAMP, " +
+            "@name, @tracked, @tempVcChannel, @tempVcDefaultMemberLimit, @tempVcDefaultBitrate, @robloxAlertChannel, " +
+            "@robloxAlertInterval)";
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
@@ -41,6 +53,11 @@ public static class Guilds
         }
     }
     
+    /// <summary>
+    /// Removes a Guild from the database.
+    /// </summary>
+    /// <param name="id">The ID of the Guild.</param>
+    /// <returns>Whether the operation succeeds.</returns>
     public static async Task<bool> RemoveGuild(ulong id)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
@@ -63,6 +80,20 @@ public static class Guilds
         }
     }
     
+    /// <summary>
+    /// Modifies a Guild in the database.
+    /// </summary>
+    /// <param name="id">The ID of the Guild.</param>
+    /// <param name="name">The name of the Guild.</param>
+    /// <param name="tracked">Whether to track the Guild.</param>
+    /// <param name="tempVcChannel">The Channel ID for creating Temporary VCs.</param>
+    /// <param name="tempVcEnabled">Whether to handle Temporary VCs for the Guild.</param>
+    /// <param name="tempVcDefaultMemberLimit">The default member limit for Temporary VCs.</param>
+    /// <param name="tempVcDefaultBitrate">The default bitrate for Temporary VCs.</param>
+    /// <param name="robloxAlertChannel">The channel ID for roblox alerts.</param>
+    /// <param name="robloxAlertEnabled">Whether to handle roblox alerts.</param>
+    /// <param name="robloxAlertInterval">The interval for each roblox alert.</param>
+    /// <returns>Whether the operation succeeds.</returns>
     public static async Task<bool> ModifyGuild(ulong id, string? name = null, bool? tracked = null,
         ulong? tempVcChannel = null, bool? tempVcEnabled = null, int? tempVcDefaultMemberLimit = null,
         int? tempVcDefaultBitrate = null, ulong? robloxAlertChannel = null, bool? robloxAlertEnabled = null,
@@ -160,12 +191,18 @@ public static class Guilds
         }
     }
     
+    /// <summary>
+    /// Gets a Guild from the database.
+    /// </summary>
+    /// <param name="id">The ID of the Guild.</param>
+    /// <returns>The Guild.</returns>
+    /// <exception cref="KeyNotFoundException">Thrown if the Guild doesn't exist.</exception>
     public static async Task<GuildRow> GetGuild(ulong id)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
         
-        const string query = $"SELECT * FROM guilds WHERE id=@id";
+        const string query = "SELECT * FROM guilds WHERE id=@id";
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
@@ -208,9 +245,14 @@ public static class Guilds
             };
         }
 
-        throw new KeyNotFoundException($"No Guild exists with id: {id}");
+        throw new KeyNotFoundException($"No Guild exists with ID: {id}");
     }
     
+    /// <summary>
+    /// Checks if a Guild exists in the database.
+    /// </summary>
+    /// <param name="id">The ID of the Guild.</param>
+    /// <returns>Whether the Guild exists.</returns>
     public static async Task<bool> GuildExists(ulong id)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();

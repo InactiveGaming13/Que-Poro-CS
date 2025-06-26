@@ -6,4 +6,5 @@ public class BannedPhraseLinkRow
     public required DateTime CreatedAt { get; set; }
     public required Guid BannedPhraseId { get; set; }
     public required ulong ChannelId { get; set; }
+    public required ulong GuildId { get; set; }
 }

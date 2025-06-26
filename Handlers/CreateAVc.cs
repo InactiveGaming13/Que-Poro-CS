@@ -455,7 +455,7 @@ public static class CreateAVcHandler
             {
                 channel = await client.GetChannelAsync(tempVc.Id);
             }
-            catch (NotFoundException e)
+            catch (NotFoundException)
             {
                 await TempVcs.RemoveTempVc(tempVc.Id);
                 continue;
@@ -469,22 +469,19 @@ public static class CreateAVcHandler
             }
 
             tempVc.UserCount = channel.Users.Count;
-            if (tempVc.UserCount.Equals(tempVc.UserQueue.Count)) continue;
 
             List<ulong> memberIds = [];
             foreach (DiscordMember discordUser in channel.Users)
             {
                 memberIds.Add(discordUser.Id);
+                
                 if (discordUser.IsBot || tempVc.UserQueue.Contains(discordUser.Id))
                     continue;
                     
                 tempVc.UserQueue.Add(discordUser.Id);
             }
-
-            tempVc.UserQueue.ForEach(Console.WriteLine);
-            Console.WriteLine('\n');
+            
             tempVc.UserQueue = tempVc.UserQueue.Intersect(memberIds).ToList();
-            tempVc.UserQueue.ForEach(Console.WriteLine);
             
 
             await TempVcs.ModifyTempVc(channel.Id, tempVc.Master, tempVc.Name, tempVc.Bitrate, tempVc.UserLimit,

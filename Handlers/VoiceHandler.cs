@@ -34,7 +34,8 @@ public class VoiceCommands : ApplicationCommandsModule
 {
     [SlashCommand("join", "Joins a Voice Channel (defaults to your current channel)")]
     public async Task Join(InteractionContext e,
-        [Option("channel", "The specified channel to join"), ChannelTypes(ChannelType.Voice)] DiscordChannel? channel = null!)
+        [Option("channel", "The specified channel to join"),
+         ChannelTypes(ChannelType.Voice)] DiscordChannel? channel = null)
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         
@@ -52,32 +53,17 @@ public class VoiceCommands : ApplicationCommandsModule
             return;
         }
 
-        if (e.Member.VoiceState.Channel is null && channel is null)
+        channel ??= e.Member.VoiceState.Channel;
+
+        if (channel is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent("You are not in a VC."));
             return;
         }
         
-        if (e.Member.VoiceState.Channel is not null && channel is null)
-        {
-            channel = e.Member.VoiceState.Channel;
-        }
-
-        if (channel is null)
-        {
-            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                "An unknown error occured."));
-            return;
-        }
-
-        GuildRow databaseGuild;
-        if (await Guilds.GuildExists(e.Guild.Id))
-            databaseGuild = await Guilds.GetGuild(e.Guild.Id);
-        else
-        {
+        if (!await Guilds.GuildExists(e.Guild.Id))
             await Guilds.AddGuild(e.Guild.Id, e.Guild.Name);
-            databaseGuild = await Guilds.GetGuild(e.Guild.Id);
-        }
+        GuildRow databaseGuild = await Guilds.GetGuild(e.Guild.Id);
 
         if (channel.Id.Equals(databaseGuild.TempVcChannel))
         {
@@ -85,32 +71,27 @@ public class VoiceCommands : ApplicationCommandsModule
                     "I am unable to join a 'Create A VC' channel."));
             return;
         }
-        
-        if (channel.Type is not ChannelType.Voice)
+
+        if (!await VoiceHandler.ConnectToLavaLink(e.Client, e.Guild))
         {
-            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Not a valid voice channel."));
+            DiscordUser owner =
+                await e.Client.GetUserAsync(Convert.ToUInt64(Environment.GetEnvironmentVariable("BOT_OWNER_ID")));
+            await owner.SendMessageAsync("LavaLink has failed to connect (join command)!");
+            
+            await e.EditResponseAsync(
+                new DiscordWebhookBuilder().WithContent("I am unable to connect. I have reported this to my owner."));
             return;
         }
-
-        LavalinkExtension lavalink = e.Client.GetLavalink();
         
-        LavalinkGuildPlayer? guildPlayer = lavalink.GetGuildPlayer(e.Guild);
+        LavalinkGuildPlayer? guildPlayer = VoiceHandler.Lavalink.GetGuildPlayer(e.Guild);
         
         if (guildPlayer is not null)
         {
             await VoiceHandler.SwitchChannel(e, channel);
             return;
         }
-        
-        if (!lavalink.ConnectedSessions.Any())
-        {
-            await e.EditResponseAsync(
-                new DiscordWebhookBuilder().WithContent(
-                    "Attempting to connect."));
-            await lavalink.ConnectAsync(LavalinkCfg.LavalinkConfig);
-        }
 
-        LavalinkSession session = lavalink.ConnectedSessions.Values.First();
+        LavalinkSession session = VoiceHandler.Lavalink.ConnectedSessions.Values.First();
 
         await session.ConnectAsync(channel);
         await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Joined {channel.Mention}."));
@@ -135,16 +116,18 @@ public class VoiceCommands : ApplicationCommandsModule
             return;
         }
         
-        LavalinkExtension lavalink = e.Client.GetLavalink();
-        
-        if (!lavalink.ConnectedSessions.Any())
+        if (!await VoiceHandler.ConnectToLavaLink(e.Client, e.Guild))
         {
+            DiscordUser owner =
+                await e.Client.GetUserAsync(Convert.ToUInt64(Environment.GetEnvironmentVariable("BOT_OWNER_ID")));
+            await owner.SendMessageAsync("LavaLink has failed to connect (leave command)!");
+            
             await e.EditResponseAsync(
-                new DiscordWebhookBuilder().WithContent("The Lavalink connection is not established! Attempting to re-connect."));
-            await lavalink.ConnectAsync(LavalinkCfg.LavalinkConfig);
+                new DiscordWebhookBuilder().WithContent("I am unable to connect. I have reported this to my owner."));
+            return;
         }
         
-        LavalinkGuildPlayer? guildPlayer = lavalink.GetGuildPlayer(e.Guild);
+        LavalinkGuildPlayer? guildPlayer = VoiceHandler.Lavalink.GetGuildPlayer(e.Guild);
         
         if (guildPlayer is null)
         {
@@ -161,6 +144,38 @@ public static class VoiceHandler
 {
     public static readonly bool UsingLavaLink = Environment.GetEnvironmentVariable("LAVALINK_HOST") != null &&
                                                 Environment.GetEnvironmentVariable("LAVALINK_PASSWORD") != null;
+
+    public static LavalinkExtension? Lavalink;
+
+    public static async Task<bool> ConnectToLavaLink(DiscordClient client, DiscordGuild guild)
+    {
+        Lavalink ??= client.GetLavalink();
+        
+        if (Lavalink is null)
+            return false;
+
+        while (!Lavalink.ConnectedSessions.Any())
+        {
+            try
+            {
+                await Lavalink.ConnectAsync(LavalinkCfg.LavalinkConfig);
+                Console.WriteLine("Connected");
+                return true;
+            }
+            catch (Exception e)
+            {
+                if (e.HResult == -2146233088)
+                {
+                    Console.WriteLine("LAVALINK SERVER IS OFFLINE!");
+                    return false;
+                }
+                Console.WriteLine(e);
+                await Task.Delay(1000);
+            }
+        }
+
+        return true;
+    }
     
     public static async Task SwitchChannel(InteractionContext e, DiscordChannel channel)
     {
@@ -180,36 +195,24 @@ public static class VoiceHandler
             return;
         }
 
-        LavalinkExtension lavalink = e.Client.GetLavalink();
-
-        if (!lavalink.ConnectedSessions.Any())
-        {
+        if (!await ConnectToLavaLink(e.Client, e.Guild))
+        {DiscordUser owner =
+                await e.Client.GetUserAsync(Convert.ToUInt64(Environment.GetEnvironmentVariable("BOT_OWNER_ID")));
+            await owner.SendMessageAsync(
+                $"Lavalink failed to connect during SwitchChannel at {DateTime.Now.TimeOfDay}");
             await e.EditResponseAsync(
-                new DiscordWebhookBuilder().WithContent("Attempting to connect."));
-            await lavalink.ConnectAsync(LavalinkCfg.LavalinkConfig);
+                new DiscordWebhookBuilder().WithContent("I am unable to connect! I have alerted my owner."));
+            return;
         }
         
-        
-        LavalinkGuildPlayer? guildPlayer = lavalink.GetGuildPlayer(e.Guild);
+        LavalinkGuildPlayer? guildPlayer = Lavalink.GetGuildPlayer(e.Guild);
 
         if (guildPlayer is not null)
         {
             await guildPlayer.DisconnectAsync();
         }
 
-        DiscordUser owner =
-            await e.Client.GetUserAsync(Convert.ToUInt64(Environment.GetEnvironmentVariable("BOT_OWNER_ID")));
-        await owner.SendMessageAsync(
-            $"Lavalink failed to connect during SwitchChannel at {DateTime.Now.TimeOfDay}");
-        
-        if (!lavalink.ConnectedSessions.Any())
-        {
-            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                    "The Lavalink connection is not established! I have reported this to my owner."));
-            return;
-        }
-
-        LavalinkSession session = lavalink.ConnectedSessions.Values.First();
+        LavalinkSession session = Lavalink.ConnectedSessions.Values.First();
 
         await session.ConnectAsync(channel);
         await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Switched to {channel.Mention}."));
@@ -237,30 +240,9 @@ public static class VoiceHandler
                 
                 if (await TempVcs.TempVcExists(e.Before.Channel.Id) && e.Before.Channel.Users.Count == 0)
                 {
-                    TempVcRow tempVc = await TempVcs.GetTempVc(e.Before.Channel.Id);
                     if (e.After.Channel.Id.Equals(guild.TempVcChannel))
                     {
                         await e.Before.Channel.PlaceMemberAsync(e.After.Member);
-                        tempVc.UserQueue.Remove(e.User.Id);
-                        tempVc.UserQueue.Add(e.User.Id);
-                        if (tempVc.UserQueue.First().Equals(e.User.Id))
-                            return;
-
-                        while (!e.Before.Channel.Users.Any(user => user.Id.Equals(tempVc.UserQueue.First())))
-                        {
-                            tempVc.UserQueue.Remove(tempVc.UserQueue.First());
-                        }
-
-                        DiscordUser user = await client.GetUserAsync(tempVc.UserQueue.First());
-
-                        string channelName = (user.GlobalName ?? user.Username).EndsWith('s')
-                            ? $"{user.GlobalName ?? user.Username}' VC"
-                            : $"{user.GlobalName ?? user.Username}'s VC";
-
-                        await TempVcs.ModifyTempVc(e.Before.Channel.Id, name: channelName, master: user.Id,
-                            userQueue: tempVc.UserQueue);
-                        await CreateAVcHandler.ModifyTempVc(user, e.Before.Channel, channelName, null, null);
-                        
                         return;
                     }
                     await TempVcs.RemoveTempVc(e.Before.Channel.Id);
@@ -293,12 +275,19 @@ public static class VoiceHandler
                     if (tempVc.Master.Equals(e.User.Id))
                     {
                         tempVc.Master = tempVc.UserQueue.First();
-                        DiscordUser user = await client.GetUserAsync(tempVc.UserQueue.First());
-                        tempVc.Name = (user.GlobalName ?? user.Username).EndsWith('s')
-                            ? $"{user.GlobalName ?? user.Username}' VC"
-                            : $"{user.GlobalName ?? user.Username}'s VC";
-
-                        await CreateAVcHandler.ModifyTempVc(e.User, e.Before.Channel, tempVc.Name, null, null);
+                        foreach (DiscordMember vcMember in e.Before.Channel.Users)
+                        {
+                            if (vcMember.Id != tempVc.UserQueue.First()) continue;
+                            
+                            tempVc.Name = (vcMember.GlobalName ?? vcMember.Username).EndsWith('s')
+                                ? $"{vcMember.GlobalName ?? vcMember.Username}' VC"
+                                : $"{vcMember.GlobalName ?? vcMember.Username}'s VC";
+                            
+                            await TempVcs.ModifyTempVc(e.Before.Channel.Id, tempVc.Master, tempVc.Name,
+                                userQueue: tempVc.UserQueue);
+                            await CreateAVcHandler.ModifyTempVc(e.User, e.Before.Channel, tempVc.Name, null, null);
+                            return;
+                        }
                     }
 
                     await TempVcs.ModifyTempVc(e.Before.Channel.Id, tempVc.Master, tempVc.Name,

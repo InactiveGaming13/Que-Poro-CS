@@ -6,6 +6,8 @@ using DisCatSharp.Enums;
 using DisCatSharp.Lavalink;
 using DisCatSharp.Lavalink.Entities;
 using DisCatSharp.Lavalink.Enums;
+using QuePoro.Database.Handlers;
+using QuePoro.Database.Types;
 
 namespace QuePoro.Handlers;
 
@@ -29,21 +31,43 @@ public class MusicCommands : ApplicationCommandsModule
                 "I do not work in DMs."));
             return;
         }
-        
-        LavalinkExtension lavalink = e.Client.GetLavalink();
-        LavalinkGuildPlayer? guildPlayer = lavalink.GetGuildPlayer(e.Guild);
-        
-        if (guildPlayer == null)
+
+        if (e.Member.VoiceState.Channel is null)
         {
-            LavalinkSession session = lavalink.ConnectedSessions.Values.First();
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                "You are not in a vc."));
+            return;
+        }
+
+        if (!await VoiceHandler.ConnectToLavaLink(e.Client, e.Guild))
+        {
+            DiscordUser owner =
+                await e.Client.GetUserAsync(Convert.ToUInt64(Environment.GetEnvironmentVariable("BOT_OWNER_ID")));
+            await owner.SendMessageAsync("LavaLink has failed to connect (play command)!");
+            
+            await e.EditResponseAsync(
+                new DiscordWebhookBuilder().WithContent("I am unable to connect. I have reported this to my owner."));
+            return;
+        }
+
+        if (!await Users.UserExists(e.UserId))
+            await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName);
+        UserRow user = await Users.GetUser(e.UserId);
+
+        LavalinkGuildPlayer? guildPlayer = VoiceHandler.Lavalink.GetGuildPlayer(e.Guild);
+        
+        if (guildPlayer is null)
+        {
+            LavalinkSession session = VoiceHandler.Lavalink.ConnectedSessions.Values.First();
             await session.ConnectAsync(e.Member.VoiceState.Channel);
-            guildPlayer = lavalink.GetGuildPlayer(e.Guild);
+            guildPlayer = VoiceHandler.Lavalink.GetGuildPlayer(e.Guild);
         }
         
-        if (guildPlayer.Channel != e.Channel && !e.Member.Permissions.HasPermission(Permissions.MoveMembers))
+        if (guildPlayer is not null && guildPlayer.Channel != e.Channel && !user.Admin &&
+            !e.Member.Permissions.HasPermission(Permissions.MoveMembers))
         {
-            await e.EditResponseAsync(
-                new DiscordWebhookBuilder().WithContent("You are not in my vc and you lack permission to move me."));
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                    "You are not in my vc and you lack permission to move me."));
             return;
         }
         
@@ -84,33 +108,13 @@ public class MusicCommands : ApplicationCommandsModule
                 LavalinkLoadResultType.Playlist => loadResult.GetResultAs<LavalinkPlaylist>().Tracks,
                 _ => null
             };
-            
-            string? AddPlaylistToQueue()
+
+            if (track is null && queue is null)
             {
-                string? tracksAdded = null;
-                
-                if (queue == null)
-                {
-                    if (track == null) return tracksAdded;
-                    guildPlayer.AddToQueue(track);
-                    tracksAdded += $"{track.Info.Title} by {track.Info.Author}";
-                    return tracksAdded;   
-                }
-                
-                for (int i = 0; i < queue.Count -1; i++)
-                {
-                    if (force)
-                        guildPlayer.AddToQueueAt(i, queue[i]);
-                    else
-                        guildPlayer.AddToQueue(queue[i]);
-                
-                    tracksAdded += $"{queue[i].Info.Title} by {queue[i].Info.Author}";
-                    if (i < queue.Count - 1) tracksAdded += "\n";
-                }
-                
-                return tracksAdded;
+                await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                    $"Failed to find {title}"));
             }
-            
+
             if (guildPlayer.CurrentTrack != null)
             {
                 string embedTitle = "Added playlist to queue";
@@ -170,6 +174,33 @@ public class MusicCommands : ApplicationCommandsModule
             
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 $"Now playing [{track?.Info.Title}]({track?.Info.Uri}) by {track?.Info.Author}."));
+            return;
+
+            string? AddPlaylistToQueue()
+            {
+                string? tracksAdded = null;
+                
+                if (queue == null)
+                {
+                    if (track == null) return tracksAdded;
+                    guildPlayer.AddToQueue(track);
+                    tracksAdded += $"{track.Info.Title} by {track.Info.Author}";
+                    return tracksAdded;   
+                }
+                
+                for (int i = 0; i < queue.Count -1; i++)
+                {
+                    if (force)
+                        guildPlayer.AddToQueueAt(i, queue[i]);
+                    else
+                        guildPlayer.AddToQueue(queue[i]);
+                
+                    tracksAdded += $"{queue[i].Info.Title} by {queue[i].Info.Author}";
+                    if (i < queue.Count - 1) tracksAdded += "\n";
+                }
+                
+                return tracksAdded;
+            }
         }
     }
 
@@ -398,7 +429,20 @@ public class MusicCommands : ApplicationCommandsModule
                 ? "The queue is empty"
                 : $"The current queue for {e.Guild.Name}";
 
-            string queue = guildPlayer.Queue.Aggregate("", (current, track) => current + $"{track.Info.Title} by {track.Info.Author}\n");
+            string queue = guildPlayer.Queue.Aggregate("", (current, track) =>
+            {
+                string nextTrack = $"{track.Info.Title} by {track.Info.Author}\n";
+
+                return (current.Length + nextTrack.Length) switch
+                {
+                    > 4096 when current.Length + "...".Length < 4096 => current + "...",
+                    > 4096 when current.Length + "...".Length > 4096 => string.Empty,
+                    _ => current + nextTrack
+                };
+            });
+
+            if (queue.Length > 4096)
+                queue = queue.Remove(4096);
 
             DiscordEmbed embedBuilder = new DiscordEmbedBuilder
             {
@@ -503,7 +547,7 @@ public class MusicCommands : ApplicationCommandsModule
             [Option("volume", "The volume to set the bot to"), MinimumValue(0), MaximumValue(200)] int vol)
         {
             await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
-            if (e.Member?.VoiceState is null || e.Guild is null)
+            if (e.Member is null || e.Guild is null)
             {
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                     "I do not work in DMs."));

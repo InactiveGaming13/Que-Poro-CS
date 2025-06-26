@@ -6,6 +6,19 @@ namespace QuePoro.Database.Handlers;
 
 public static class Responses
 {
+    /// <summary>
+    /// Adds a Response to the database.
+    /// </summary>
+    /// <param name="userResponsibleId">The creator of the Response.</param>
+    /// <param name="trigger">The trigger of the Response.</param>
+    /// <param name="userId">The user to respond to.</param>
+    /// <param name="channelId">The channel to respond in.</param>
+    /// <param name="response">The text to respond with.</param>
+    /// <param name="mediaAlias">The media alias to respond with.</param>
+    /// <param name="mediaCategory">The media category to respond with.</param>
+    /// <param name="exactTrigger">Whether the trigger must equal the message content.</param>
+    /// <param name="enabled">Whether to enable the Response.</param>
+    /// <returns>Whether the operation succeeds.</returns>
     public static async Task<bool> AddResponse(ulong userResponsibleId, string trigger, ulong? userId = null,
         ulong? channelId = null, string? response = null, string? mediaAlias = null, string? mediaCategory = null,
         bool exactTrigger = false, bool enabled = true)
@@ -17,8 +30,8 @@ public static class Responses
         await using NpgsqlCommand command = connection.CreateCommand();
         
         const string query = 
-            "INSERT INTO responses (created_by, user_id, channel_id, trigger, response, media_alias, media_category, " +
-            "exact, enabled) VALUES (@createdBy, @userId, @channelId, @trigger, @response, @mediaAlias, " +
+            "INSERT INTO responses (created_at, created_by, user_id, channel_id, trigger, response, media_alias, media_category, " +
+            "exact, enabled) VALUES (CURRENT_TIMESTAMP, @createdBy, @userId, @channelId, @trigger, @response, @mediaAlias, " +
             "@mediaCategory, @exactTrigger, @enabled)";
 
         command.CommandText = query;
@@ -55,9 +68,10 @@ public static class Responses
     }
 
     /// <summary>
-    /// Removes a reaction.
+    /// Removes a Response from the database.
     /// </summary>
-    /// <param name="responseId">The Guid of the response to remove.</param>
+    /// <param name="responseId">The ID of the Response.</param>
+    /// <returns>Whether the operation succeeds.</returns>
     public static async Task<bool> RemoveResponse(Guid responseId)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
@@ -80,9 +94,22 @@ public static class Responses
         }
     }
     
-    public static async Task<bool> ModifyResponse(Guid responseId, string? trigger = null, string? response = null,
-        string? mediaAlias = null, string? mediaCategory = null, ulong? userId = null, bool? exact = null,
-        bool? enabled = null)
+    /// <summary>
+    /// Modifies a Response in the database.
+    /// </summary>
+    /// <param name="responseId">The ID of the Response.</param>
+    /// <param name="trigger">The trigger of the Response.</param>
+    /// <param name="userId">The user to respond to.</param>
+    /// <param name="channelId">The channel to respond in.</param>
+    /// <param name="response">The text to respond with.</param>
+    /// <param name="mediaAlias">The media alias to respond with.</param>
+    /// <param name="mediaCategory">The media category to respond with.</param>
+    /// <param name="exact">Whether the trigger must match the message content.</param>
+    /// <param name="enabled">Whether the Response is enabled.</param>
+    /// <returns>Whether the operation succeeds.</returns>
+    public static async Task<bool> ModifyResponse(Guid responseId, string? trigger = null, ulong? userId = null,
+        ulong? channelId = null, string? response = null, string? mediaAlias = null, string? mediaCategory = null,
+        bool? exact = null, bool? enabled = null)
     {
         if (trigger is null && response is null && mediaAlias is null && mediaCategory is null && userId is null
             && exact is null && enabled is null) return false;
@@ -97,6 +124,21 @@ public static class Responses
             query += " trigger=@trigger,";
             command.Parameters.Add(new NpgsqlParameter("trigger", NpgsqlDbType.Text) { Value = trigger });
         }
+        
+        if (userId is not null)
+        {
+            query += " user_id=@userId,";
+            command.Parameters.Add(userId is 0
+            ? new NpgsqlParameter("userId", NpgsqlDbType.Numeric) { Value = DBNull.Value }
+            : new NpgsqlParameter("userId", NpgsqlDbType.Numeric) { Value = (long)userId });
+        }
+        
+        if (channelId is not null)
+        {
+            query += " channel_id=@channelId,";
+            command.Parameters.Add(channelId is 0
+                ? new NpgsqlParameter("channelId", NpgsqlDbType.Numeric) { Value = DBNull.Value }
+                : new NpgsqlParameter("channelId", NpgsqlDbType.Numeric) { Value = (long)channelId });        }
         
         if (response is not null)
         {
@@ -114,12 +156,6 @@ public static class Responses
         {
             query += " media_category=@mediaCategory,";
             command.Parameters.Add(new NpgsqlParameter("mediaCategory", NpgsqlDbType.Text) { Value = mediaCategory });
-        }
-        
-        if (userId is not null)
-        {
-            query += " user_id=@userId,";
-            command.Parameters.Add(new NpgsqlParameter("userId", NpgsqlDbType.Numeric) { Value = (long)userId });
         }
         
         if (exact is not null)
@@ -154,11 +190,23 @@ public static class Responses
         }
     }
     
-    public static async Task<Guid?> GetResponseId(string trigger, string? response = null, string? mediaAlias = null,
-        string? mediaCategory = null, ulong? userId = null, ulong? channelId = null, bool? exact = null,
+    /// <summary>
+    /// Gets the ID for a specific Response.
+    /// </summary>
+    /// <param name="trigger">The trigger for the Response.</param>
+    /// <param name="userId">The user to respond to.</param>
+    /// <param name="channelId">The channel to respond in.</param>
+    /// <param name="response">The text to respond with.</param>
+    /// <param name="mediaAlias">The media alias to respond with.</param>
+    /// <param name="mediaCategory">The media category to respond with.</param>
+    /// <param name="exact">Whether the trigger should equal the message content.</param>
+    /// <param name="enabled">Whether the Response is enabled.</param>
+    /// <returns>The ID of the Response (if it exists).</returns>
+    public static async Task<Guid?> GetResponseId(string trigger, ulong? userId = null, ulong? channelId = null,
+        string? response = null, string? mediaAlias = null, string? mediaCategory = null, bool? exact = null,
         bool? enabled = null)
     {
-        if (response is null && mediaAlias is null && mediaCategory is null && userId is null && channelId is null
+        if (response is null && userId is null && channelId is null && mediaAlias is null && mediaCategory is null 
             && exact is null && enabled is null) return null;
         
         await using NpgsqlConnection connection = await Database.GetConnection();
@@ -166,6 +214,18 @@ public static class Responses
         
         string query =
             "SELECT id FROM responses WHERE trigger LIKE @trigger";
+        
+        if (userId is not null)
+        {
+            query += " AND user_id=@userId";
+            command.Parameters.Add(new NpgsqlParameter("userId", NpgsqlDbType.Numeric) { Value = (long)userId });
+        }
+        
+        if (channelId is not null)
+        {
+            query += " AND channel_id=@channelId";
+            command.Parameters.Add(new NpgsqlParameter("channelId", NpgsqlDbType.Numeric) { Value = (long)channelId });
+        }
 
         if (response is not null)
         {
@@ -183,18 +243,6 @@ public static class Responses
         {
             query += " AND media_category LIKE @mediaCategory";
             command.Parameters.Add(new NpgsqlParameter("mediaCategory", NpgsqlDbType.Text) { Value = mediaCategory });
-        }
-        
-        if (userId is not null)
-        {
-            query += " AND user_id=@userId";
-            command.Parameters.Add(new NpgsqlParameter("userId", NpgsqlDbType.Numeric) { Value = (long)userId });
-        }
-        
-        if (channelId is not null)
-        {
-            query += " AND channel_id=@channelId";
-            command.Parameters.Add(new NpgsqlParameter("channelId", NpgsqlDbType.Numeric) { Value = (long)channelId });
         }
         
         if (exact is not null)
@@ -215,7 +263,13 @@ public static class Responses
         return (Guid)command.ExecuteScalar()!;
     }
     
-    public static async Task<ResponseRow?> GetResponse(Guid responseId)
+    /// <summary>
+    /// Gets a Response with its corresponding ID.
+    /// </summary>
+    /// <param name="responseId">The ID of the Response.</param>
+    /// <returns>The Response.</returns>
+    /// <exception cref="KeyNotFoundException">Thrown if the Response doesn't exist.</exception>
+    public static async Task<ResponseRow> GetResponse(Guid responseId)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
@@ -228,8 +282,6 @@ public static class Responses
         await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            Guid id = reader.GetGuid(reader.GetOrdinal("id"));
-            DateTime createdAt = reader.GetDateTime(reader.GetOrdinal("created_at"));
             ulong? userResponseId = null;
             try
             {
@@ -248,7 +300,6 @@ public static class Responses
             {
                 // ignored
             }
-            string triggerMessage = reader.GetString(reader.GetOrdinal("trigger"));
             string? responseMessage = null;
             try
             {
@@ -276,28 +327,31 @@ public static class Responses
             {
                 // ignored
             }
-            bool exactTrigger = reader.GetBoolean(reader.GetOrdinal("exact"));
-            bool enabled = reader.GetBoolean(reader.GetOrdinal("enabled"));
             
             
             return new ResponseRow
             {
-                Id = id,
-                CreatedAt = createdAt,
+                Id = reader.GetGuid(reader.GetOrdinal("id")),
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
                 UserId = userResponseId,
                 ChannelId = channelResponseId,
-                TriggerMessage = triggerMessage,
+                TriggerMessage = reader.GetString(reader.GetOrdinal("trigger")),
                 ResponseMessage = responseMessage,
                 MediaAlias = mediaAlias,
                 MediaCategory = mediaCategory,
-                ExactTrigger = exactTrigger,
-                Enabled = enabled
+                ExactTrigger = reader.GetBoolean(reader.GetOrdinal("exact")),
+                Enabled = reader.GetBoolean(reader.GetOrdinal("enabled"))
             };
         }
 
-        return null;
+        throw new KeyNotFoundException($"No Response exists with ID: {responseId}");
     }
     
+    /// <summary>
+    /// Gets a List of Responses related to the User from the database.
+    /// </summary>
+    /// <param name="userId">The ID of the User.</param>
+    /// <returns>The List of Responses.</returns>
     public static async Task<List<ResponseRow>> GetUserResponses(ulong userId)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
@@ -313,8 +367,6 @@ public static class Responses
         await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            Guid id = reader.GetGuid(reader.GetOrdinal("id"));
-            DateTime createdAt = reader.GetDateTime(reader.GetOrdinal("created_at"));
             ulong? userResponseId = null;
             try
             {
@@ -333,7 +385,6 @@ public static class Responses
             {
                 // ignored
             }
-            string triggerMessage = reader.GetString(reader.GetOrdinal("trigger"));
             string? responseMessage = null;
             try
             {
@@ -361,28 +412,31 @@ public static class Responses
             {
                 // ignored
             }
-            bool exactTrigger = reader.GetBoolean(reader.GetOrdinal("exact"));
-            bool enabled = reader.GetBoolean(reader.GetOrdinal("enabled"));
             
             
             responses.Add(new ResponseRow
             {
-                Id = id,
-                CreatedAt = createdAt,
+                Id = reader.GetGuid(reader.GetOrdinal("id")),
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
                 UserId = userResponseId,
                 ChannelId = channelResponseId,
-                TriggerMessage = triggerMessage,
+                TriggerMessage = reader.GetString(reader.GetOrdinal("trigger")),
                 ResponseMessage = responseMessage,
                 MediaAlias = mediaAlias,
                 MediaCategory = mediaCategory,
-                ExactTrigger = exactTrigger,
-                Enabled = enabled
+                ExactTrigger = reader.GetBoolean(reader.GetOrdinal("exact")),
+                Enabled = reader.GetBoolean(reader.GetOrdinal("enabled"))
             });
         }
 
         return responses;
     }
     
+    /// <summary>
+    /// Gets a List of Responses related to a Channel from the database.
+    /// </summary>
+    /// <param name="channelId">The ID of the Channel.</param>
+    /// <returns>The List of Responses.</returns>
     public static async Task<List<ResponseRow>> GetChannelResponses(ulong? channelId = null)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
@@ -400,8 +454,6 @@ public static class Responses
         await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            Guid id = reader.GetGuid(reader.GetOrdinal("id"));
-            DateTime createdAt = reader.GetDateTime(reader.GetOrdinal("created_at"));
             ulong? userResponseId = null;
             try
             {
@@ -420,7 +472,6 @@ public static class Responses
             {
                 // ignored
             }
-            string triggerMessage = reader.GetString(reader.GetOrdinal("trigger"));
             string? responseMessage = null;
             try
             {
@@ -448,28 +499,32 @@ public static class Responses
             {
                 // ignored
             }
-            bool exactTrigger = reader.GetBoolean(reader.GetOrdinal("exact"));
-            bool enabled = reader.GetBoolean(reader.GetOrdinal("enabled"));
             
             
             responses.Add(new ResponseRow
             {
-                Id = id,
-                CreatedAt = createdAt,
+                Id = reader.GetGuid(reader.GetOrdinal("id")),
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
                 UserId = userResponseId,
                 ChannelId = channelResponseId,
-                TriggerMessage = triggerMessage,
+                TriggerMessage = reader.GetString(reader.GetOrdinal("trigger")),
                 ResponseMessage = responseMessage,
                 MediaAlias = mediaAlias,
                 MediaCategory = mediaCategory,
-                ExactTrigger = exactTrigger,
-                Enabled = enabled
+                ExactTrigger = reader.GetBoolean(reader.GetOrdinal("exact")),
+                Enabled = reader.GetBoolean(reader.GetOrdinal("enabled"))
             });
         }
 
         return responses;
     }
 
+    /// <summary>
+    /// Gets a List of Responses related to a User and a Channel from the database.
+    /// </summary>
+    /// <param name="userId">The ID of the User.</param>
+    /// <param name="channelId">The ID of the Channel.</param>
+    /// <returns>The List of Responses.</returns>
     public static async Task<List<ResponseRow>> GetUserChannelResponses(ulong userId, ulong channelId)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
@@ -486,8 +541,6 @@ public static class Responses
         await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            Guid id = reader.GetGuid(reader.GetOrdinal("id"));
-            DateTime createdAt = reader.GetDateTime(reader.GetOrdinal("created_at"));
             ulong? userResponseId = null;
             try
             {
@@ -506,7 +559,6 @@ public static class Responses
             {
                 // ignored
             }
-            string triggerMessage = reader.GetString(reader.GetOrdinal("trigger"));
             string? responseMessage = null;
             try
             {
@@ -534,28 +586,29 @@ public static class Responses
             {
                 // ignored
             }
-            bool exactTrigger = reader.GetBoolean(reader.GetOrdinal("exact"));
-            bool enabled = reader.GetBoolean(reader.GetOrdinal("enabled"));
-            
             
             responses.Add(new ResponseRow
             {
-                Id = id,
-                CreatedAt = createdAt,
+                Id = reader.GetGuid(reader.GetOrdinal("id")),
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
                 UserId = userResponseId,
                 ChannelId = channelResponseId,
-                TriggerMessage = triggerMessage,
+                TriggerMessage = reader.GetString(reader.GetOrdinal("trigger")),
                 ResponseMessage = responseMessage,
                 MediaAlias = mediaAlias,
                 MediaCategory = mediaCategory,
-                ExactTrigger = exactTrigger,
-                Enabled = enabled
+                ExactTrigger = reader.GetBoolean(reader.GetOrdinal("exact")),
+                Enabled = reader.GetBoolean(reader.GetOrdinal("enabled"))
             });
         }
 
         return responses;
     }
     
+    /// <summary>
+    /// Gets a List of global Responses from the database.
+    /// </summary>
+    /// <returns>The List of Responses.</returns>
     public static async Task<List<ResponseRow>> GetGlobalResponses()
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
@@ -570,11 +623,6 @@ public static class Responses
         await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            Guid id = reader.GetGuid(reader.GetOrdinal("id"));
-            DateTime createdAt = reader.GetDateTime(reader.GetOrdinal("created_at"));
-            ulong? userResponseId = null;
-            ulong? channelResponseId = null;
-            string triggerMessage = reader.GetString(reader.GetOrdinal("trigger"));
             string? responseMessage = null;
             try
             {
@@ -602,22 +650,20 @@ public static class Responses
             {
                 // ignored
             }
-            bool exactTrigger = reader.GetBoolean(reader.GetOrdinal("exact"));
-            bool enabled = reader.GetBoolean(reader.GetOrdinal("enabled"));
             
             
             responses.Add(new ResponseRow
             {
-                Id = id,
-                CreatedAt = createdAt,
-                UserId = userResponseId,
-                ChannelId = channelResponseId,
-                TriggerMessage = triggerMessage,
+                Id = reader.GetGuid(reader.GetOrdinal("id")),
+                CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
+                UserId = null,
+                ChannelId = null,
+                TriggerMessage = reader.GetString(reader.GetOrdinal("trigger")),
                 ResponseMessage = responseMessage,
                 MediaAlias = mediaAlias,
                 MediaCategory = mediaCategory,
-                ExactTrigger = exactTrigger,
-                Enabled = enabled
+                ExactTrigger = reader.GetBoolean(reader.GetOrdinal("exact")),
+                Enabled = reader.GetBoolean(reader.GetOrdinal("enabled"))
             });
         }
 

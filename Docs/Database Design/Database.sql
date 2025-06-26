@@ -1,5 +1,5 @@
 DROP TABLE IF EXISTS config;
-DROP TABLE IF EXISTS banned_phrase_channels;
+DROP TABLE IF EXISTS banned_phrase_links;
 DROP TABLE IF EXISTS banned_phrases;
 DROP TABLE IF EXISTS media;
 DROP TABLE IF EXISTS reactions;
@@ -16,7 +16,7 @@ CREATE
 CREATE TABLE IF NOT EXISTS guilds
 (
     id                           NUMERIC PRIMARY KEY NOT NULL,
-    created_at                   TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at                   TIMESTAMP           NOT NULL,
     name                         TEXT                NOT NULL,
     tracked                      BOOLEAN             NOT NULL DEFAULT TRUE,
     temp_vc_channel              NUMERIC,
@@ -30,21 +30,20 @@ CREATE TABLE IF NOT EXISTS guilds
 
 CREATE TABLE IF NOT EXISTS channels
 (
-    id          NUMERIC PRIMARY KEY NOT NULL,
-    created_at  TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    name        TEXT                NOT NULL,
-    tracked     BOOLEAN             NOT NULL DEFAULT TRUE,
-    guild_id    NUMERIC             NOT NULL
-        CONSTRAINT guild_id_fk
+    id         NUMERIC PRIMARY KEY NOT NULL,
+    created_at TIMESTAMP           NOT NULL,
+    name       TEXT                NOT NULL,
+    tracked    BOOLEAN             NOT NULL DEFAULT TRUE,
+    guild_id   NUMERIC             NOT NULL
+        CONSTRAINT channels_guild_id_fk
             REFERENCES guilds,
-    description TEXT,
-    messages    INTEGER             NOT NULL DEFAULT 0
+    topic      TEXT
 );
 
 CREATE TABLE IF NOT EXISTS users
 (
     id          NUMERIC PRIMARY KEY NOT NULL,
-    created_at  TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at  TIMESTAMP           NOT NULL,
     username    TEXT                NOT NULL,
     global_name TEXT,
     admin       BOOLEAN             NOT NULL DEFAULT FALSE,
@@ -70,6 +69,7 @@ CREATE TABLE IF NOT EXISTS user_stats
     sent            INTEGER   NOT NULL DEFAULT 0,
     deleted         INTEGER   NOT NULL DEFAULT 0,
     edited          INTEGER   NOT NULL DEFAULT 0,
+    replies         INTEGER   NOT NULL DEFAULT 0,
     temp_vc_created INTEGER   NOT NULL DEFAULT 0,
     mod_actions     INTEGER   NOT NULL DEFAULT 0,
     strikes         INTEGER   NOT NULL DEFAULT 0
@@ -78,13 +78,15 @@ CREATE TABLE IF NOT EXISTS user_stats
 CREATE TABLE IF NOT EXISTS temp_vcs
 (
     id         NUMERIC PRIMARY KEY NOT NULL,
-    created_at TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_by NUMERIC             NOT NULL,
+    created_at TIMESTAMP           NOT NULL,
+    created_by NUMERIC             NOT NULL
+        CONSTRAINT temp_vcs_created_by_fk
+            REFERENCES users,
     guild_id   NUMERIC             NOT NULL
-        CONSTRAINT guild_id_tv_fk
+        CONSTRAINT temp_vcs_guild_id_fk
             REFERENCES guilds,
     master     NUMERIC             NOT NULL
-        CONSTRAINT user_id_tv_fk
+        CONSTRAINT temp_vcs_master_fk
             REFERENCES users,
     name       TEXT                NOT NULL,
     bitrate    INTEGER             NOT NULL,
@@ -105,17 +107,15 @@ CREATE TABLE IF NOT EXISTS config
     temp_vc_default_bitrate      INTEGER   NOT NULL DEFAULT 64,
     roblox_alerts_enabled        BOOLEAN   NOT NULL DEFAULT TRUE,
     replies_enabled              BOOLEAN   NOT NULL DEFAULT TRUE,
-    testers_enabled              BOOLEAN   NOT NULL DEFAULT FALSE,
-    shutdown_channel             NUMERIC   NOT NULL DEFAULT 0,
-    shutdown_message             NUMERIC   NOT NULL DEFAULT 0
+    testers_enabled              BOOLEAN   NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS media
 (
     id         uuid PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
-    created_at TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP        NOT NULL,
     created_by NUMERIC          NOT NULL
-        CONSTRAINT created_id_fk
+        CONSTRAINT media_created_by_fk
             REFERENCES users,
     alias      TEXT             NOT NULL UNIQUE,
     category   TEXT,
@@ -125,35 +125,39 @@ CREATE TABLE IF NOT EXISTS media
 CREATE TABLE IF NOT EXISTS banned_phrases
 (
     id         uuid PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
-    created_at TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP        NOT NULL,
     created_by NUMERIC          NOT NULL,
     severity   INTEGER          NOT NULL,
     phrase     TEXT             NOT NULL UNIQUE,
+    reason     TEXT,
     enabled    BOOLEAN          NOT NULL DEFAULT TRUE
 );
 
-CREATE TABLE IF NOT EXISTS banned_phrase_channels
+CREATE TABLE IF NOT EXISTS banned_phrase_links
 (
     id               uuid PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
-    created_at       TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at       TIMESTAMP        NOT NULL,
     banned_phrase_id uuid             NOT NULL
-        CONSTRAINT banned_phrase_id_fk
+        CONSTRAINT banned_phrase_links_banned_phrase_id_fk
             REFERENCES banned_phrases,
     channel_id       NUMERIC
-        CONSTRAINT channel_id_fk
-            REFERENCES channels
+        CONSTRAINT banned_phrase_links_channel_id_fk
+            REFERENCES channels,
+    guild_id         NUMERIC
+        CONSTRAINT banned_phrase_links_guild_id_fk
+            REFERENCES guilds
 );
 
 CREATE TABLE IF NOT EXISTS reactions
 (
     id            uuid PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
-    created_at    TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at    TIMESTAMP        NOT NULL,
     created_by    NUMERIC          NOT NULL
-        CONSTRAINT created_by_id_fk
+        CONSTRAINT reactions_created_by_id_fk
             REFERENCES users,
     emoji_code    TEXT             NOT NULL,
     reacts_to     NUMERIC
-        CONSTRAINT reacts_id_fk
+        CONSTRAINT reactions_reacts_to_fk
             REFERENCES users,
     trigger       TEXT,
     exact_trigger BOOLEAN          NOT NULL DEFAULT FALSE
@@ -162,15 +166,15 @@ CREATE TABLE IF NOT EXISTS reactions
 CREATE TABLE IF NOT EXISTS responses
 (
     id             uuid PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
-    created_at     TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at     TIMESTAMP        NOT NULL,
     created_by     NUMERIC          NOT NULL
-        CONSTRAINT created_by_response_fk
+        CONSTRAINT responses_created_by_fk
             REFERENCES users,
     user_id        NUMERIC
-        CONSTRAINT user_id_response_fk
+        CONSTRAINT responses_user_id_fk
             REFERENCES users,
     channel_id     NUMERIC
-        CONSTRAINT channel_id_response_fk
+        CONSTRAINT responses_channel_id_fk
             REFERENCES channels,
     trigger        TEXT             NOT NULL,
     response       TEXT,

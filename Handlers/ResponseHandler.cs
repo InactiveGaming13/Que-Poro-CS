@@ -32,23 +32,16 @@ public class ResponseCommands : ApplicationCommandsModule
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         
-        if (e.Member?.VoiceState is null || e.Guild is null)
+        if (e.Member is null || e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
             return;
         }
 
-        UserRow? databaseUser = await Users.GetUser(e.UserId);
-
-        if (databaseUser is null && await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName ?? e.User.Username))
-            databaseUser = await Users.GetUser(e.UserId);
-        else
-        {
-            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                "An unexpected database error occured."));
-            return;
-        }
+        if (!await Users.UserExists(e.UserId))
+            await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName);
+        UserRow databaseUser = await Users.GetUser(e.UserId);
         
         string responseMessage;
 
@@ -173,7 +166,7 @@ public class ResponseCommands : ApplicationCommandsModule
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         
-        if (e.Member?.VoiceState is null || e.Guild is null)
+        if (e.Member is null || e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
@@ -207,8 +200,8 @@ public class ResponseCommands : ApplicationCommandsModule
             return;
         }
 
-        string title = "";
-        List<ResponseRow> responses = [];
+        string title;
+        List<ResponseRow> responses;
 
         switch (user)
         {
@@ -217,7 +210,7 @@ public class ResponseCommands : ApplicationCommandsModule
                 responses = await Responses.GetUserResponses(e.UserId);
                 break;
             
-            case null when channel is not null:
+            case null:
                 title = $"Responses for {e.User.GlobalName} in #{channel.Name}";
                 responses = await ResponseHandler.GetUserChannelResponses(e.UserId, channel.Id);
                 break;
@@ -227,15 +220,10 @@ public class ResponseCommands : ApplicationCommandsModule
                 responses = await Responses.GetUserResponses(user.Id);
                 break;
             
-            case not null when channel is not null:
+            case not null:
                 title = $"Responses for {user.GlobalName} in #{channel.Name}";
                 responses = await ResponseHandler.GetUserChannelResponses(user.Id, channel.Id);
                 break;
-            
-            default:
-                await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                    "An unexpected error occured."));
-                return;
         }
 
         string description = responses.Aggregate(
@@ -278,7 +266,7 @@ public class ResponseCommands : ApplicationCommandsModule
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         
-        if (e.Member?.VoiceState is null || e.Guild is null)
+        if (e.Member is null || e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
@@ -316,7 +304,7 @@ public class ResponseCommands : ApplicationCommandsModule
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         
-        if (e.Member?.VoiceState is null || e.Guild is null)
+        if (e.Member is null || e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
@@ -339,7 +327,7 @@ public class ResponseCommands : ApplicationCommandsModule
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         
-        if (e.Member?.VoiceState is null || e.Guild is null)
+        if (e.Member is null || e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
@@ -363,7 +351,7 @@ public class ResponseCommands : ApplicationCommandsModule
     }
 }
 
-public class ResponseHandler()
+public static class ResponseHandler
 {
     public static async Task HandleUserResponses(MessageCreateEventArgs e, UserRow user)
     {
@@ -374,10 +362,11 @@ public class ResponseHandler()
         
         if (responses.Count == 0) return;
         
-        foreach (ResponseRow response in responses.Where(response => !response.ExactTrigger || 
-                                                                     e.Message.Content.Equals(response.TriggerMessage,
-                                                                         StringComparison.CurrentCultureIgnoreCase)
-                                                                     ).Where(response => e.Message.Content.Contains(
+        foreach (ResponseRow response in responses.Where(
+                     response => !response.ExactTrigger || 
+                                 e.Message.Content.Equals(response.TriggerMessage,
+                                     StringComparison.CurrentCultureIgnoreCase)
+                                 ).Where(response => e.Message.Content.Contains(
                      response.TriggerMessage, StringComparison.CurrentCultureIgnoreCase)))
         {
             Console.WriteLine(response.ResponseMessage);
@@ -405,7 +394,7 @@ public class ResponseHandler()
         return userChannelResponses;
     }
 
-    public static string HandleResponseString(MessageCreateEventArgs e, string response)
+    private static string HandleResponseString(MessageCreateEventArgs e, string response)
     {
         response = response.Replace("<userMention>", e.Author.Mention);
         response = response.Replace("<username>", e.Author.Username);
@@ -427,16 +416,9 @@ public class ResponseHandler()
             return null;
         }
 
-        UserRow? databaseUser = await Users.GetUser(e.UserId);
-        
-        if (databaseUser is null && await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName ?? e.User.Username))
-            databaseUser = await Users.GetUser(e.UserId);
-        else
-        {
-            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                "An unexpected database error occured."));
-            return null;
-        }
+        if (!await Users.UserExists(e.UserId))
+            await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName ?? e.User.Username);
+        UserRow databaseUser = await Users.GetUser(e.UserId);
 
         if (user is not null && user != e.User && databaseUser is { Admin: false })
         {
@@ -445,8 +427,8 @@ public class ResponseHandler()
             return null;
         }
         
-        Guid? responseId = await Responses.GetResponseId(trigger, response, mediaAlias,
-            mediaCategory, user?.Id ?? e.UserId, channel?.Id, exact);
+        Guid? responseId = await Responses.GetResponseId(trigger, user?.Id ?? e.UserId, channel?.Id, response,
+            mediaAlias, mediaCategory, exact);
 
         if (responseId is not null) return responseId;
         

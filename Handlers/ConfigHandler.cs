@@ -8,15 +8,23 @@ using QuePoro.Database.Types;
 
 namespace QuePoro.Handlers;
 
+/// <summary>
+/// The class for handling Config commands.
+/// </summary>
 [SlashCommandGroup("config", "Configuration commands")]
 public class ConfigCommands : ApplicationCommandsModule
 {
+    /// <summary>
+    /// Sets whether the bot Responds to a User.
+    /// </summary>
+    /// <param name="e">The Interaction arguments.</param>
+    /// <param name="respond">Whether to Respond.</param>
     [SlashCommand("response", "Sets weather or not the bot responds to you")]
     public async Task Response(InteractionContext e, 
         [Option("value", "True for response, false for silence")] bool respond = false)
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
-        if (e.Member?.VoiceState is null || e.Guild is null)
+        if (e.Member is null || e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
@@ -40,12 +48,17 @@ public class ConfigCommands : ApplicationCommandsModule
             $"The bot will {(respond ? "now" : "no longer")} respond to your messages."));
     }
     
+    /// <summary>
+    /// Sets whether the bot Reacts to a User.
+    /// </summary>
+    /// <param name="e">The Interaction arguments.</param>
+    /// <param name="react">Whether to React.</param>
     [SlashCommand("react", "Sets weather or not the bot replies to you")]
     public async Task React(InteractionContext e, 
         [Option("value", "True for response, false for silence")] bool react = false)
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
-        if (e.Member?.VoiceState is null || e.Guild is null)
+        if (e.Member is null || e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));

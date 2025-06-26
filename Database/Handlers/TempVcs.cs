@@ -6,14 +6,27 @@ namespace QuePoro.Database.Handlers;
 
 public static class TempVcs
 {
+    /// <summary>
+    /// Adds a Temporary VC to the database.
+    /// </summary>
+    /// <param name="id">The ID of the Temporary VC.</param>
+    /// <param name="createdBy">The ID Channel master.</param>
+    /// <param name="guildId">The Guild ID the Temporary VC belongs to.</param>
+    /// <param name="name">The name of the Temporary VC.</param>
+    /// <param name="bitrate">The bitrate of the Temporary VC.</param>
+    /// <param name="userLimit">The user limit of the Temporary VC.</param>
+    /// <param name="userCount">The number of users in the Temporary VC.</param>
+    /// <param name="userQueue">The order of users to join the Temporary VC.</param>
+    /// <returns>Whether the operation succeeds.</returns>
     public static async Task<bool> AddTempVc(ulong id, ulong createdBy, ulong guildId, string name, int bitrate, int userLimit,
         int userCount, List<ulong> userQueue)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
         const string query = 
-            "INSERT INTO temp_vcs (id, created_by, guild_id, master, name, bitrate, user_limit, user_count, user_queue) " +
-            "VALUES (@id, @createdBy, @guildId, @master, @name, @bitrate, @userLimit, @userCount, @userQueue)";
+            "INSERT INTO temp_vcs (id, created_at, created_by, guild_id, master, name, bitrate, user_limit, user_count, " +
+            " user_queue) VALUES (@id, CURRENT_TIMESTAMP, @createdBy, @guildId, @master, @name, @bitrate, @userLimit, " +
+            "@userCount, @userQueue)";
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
@@ -44,6 +57,11 @@ public static class TempVcs
         }
     }
     
+    /// <summary>
+    /// Removes a Temporary VC from the database.
+    /// </summary>
+    /// <param name="id">The ID of the Temporary VC.</param>
+    /// <returns>Whether the operation succeeds.</returns>
     public static async Task<bool> RemoveTempVc(ulong id)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
@@ -66,16 +84,16 @@ public static class TempVcs
     }
     
     /// <summary>
-    /// Modifies a Temporary VC in the database
+    /// Modifies a Temporary VC in the database.
     /// </summary>
-    /// <param name="id"></param>
-    /// <param name="master"></param>
-    /// <param name="name"></param>
-    /// <param name="bitrate"></param>
-    /// <param name="userLimit"></param>
-    /// <param name="userCount"></param>
-    /// <param name="userQueue"></param>
-    /// <returns></returns>
+    /// <param name="id">The ID of the Temporary VC.</param>
+    /// <param name="master">The ID of the Temporary VC master.</param>
+    /// <param name="name">The name of the Temporary VC.</param>
+    /// <param name="bitrate">The bitrate of the Temporary VC.</param>
+    /// <param name="userLimit">The user limit of the Temporary VC.</param>
+    /// <param name="userCount">The number of users in the Temporary VC.</param>
+    /// <param name="userQueue">The order of users to join the Temporary VC.</param>
+    /// <returns>Whether the operation succeeds.</returns>
     public static async Task<bool> ModifyTempVc(ulong id, ulong? master = null, string? name = null,
         int? bitrate = null, int? userLimit = null, int? userCount = null, List<ulong>? userQueue = null)
     {
@@ -107,7 +125,7 @@ public static class TempVcs
 
         if (userLimit is not null)
         {
-            query += " user_limit=@userLimit";
+            query += " user_limit=@userLimit,";
             command.Parameters.Add(new NpgsqlParameter("userLimit", NpgsqlDbType.Integer) { Value = userLimit });
         }
 
@@ -120,8 +138,7 @@ public static class TempVcs
         if (userQueue is not null)
         {
             query += " user_queue=@userQueue";
-            string queue = "";
-            userQueue.ForEach(user => queue += $"{user},");
+            string queue = userQueue.Aggregate("", (current, userId) => current + $"{userId},");
             if (queue.EndsWith(','))
                 queue = queue.Remove(queue.Length - 1);
             command.Parameters.Add(new NpgsqlParameter("userQueue", NpgsqlDbType.Text) { Value = queue });
@@ -150,9 +167,9 @@ public static class TempVcs
     /// <summary>
     /// Gets a Temporary VC from the database.
     /// </summary>
-    /// <param name="id">The ID of the vc</param>
-    /// <returns>The Temporary VC</returns>
-    /// <exception cref="KeyNotFoundException">If no Temporary VC was found</exception>
+    /// <param name="id">The ID of theVC.</param>
+    /// <returns>The Temporary VC.</returns>
+    /// <exception cref="KeyNotFoundException">Thrown when the Temporary VC doesn't exist.</exception>
     public static async Task<TempVcRow> GetTempVc(ulong id)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
@@ -169,7 +186,7 @@ public static class TempVcs
             List<ulong> userQueue = [];
             try
             {
-                string queue = reader.GetString(reader.GetOrdinal("user_queue"));
+                string? queue = reader.GetString(reader.GetOrdinal("user_queue"));
                 
                 if (!queue.Contains(','))
                     userQueue = [Convert.ToUInt64(queue)];
@@ -201,7 +218,7 @@ public static class TempVcs
     /// <summary>
     /// Gets all Temporary VCs from the database.
     /// </summary>
-    /// <returns>The Temporary VCs</returns>
+    /// <returns>The Temporary VCs.</returns>
     public static async Task<List<TempVcRow>> GetTempVcs()
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
@@ -247,6 +264,11 @@ public static class TempVcs
         return tempVcs;
     }
 
+    /// <summary>
+    /// Checks if a Temporary VC exists in the database.
+    /// </summary>
+    /// <param name="id">The ID of the Temporary VC.</param>
+    /// <returns>Whether the Temporary VC exists.</returns>
     public static async Task<bool> TempVcExists(ulong id)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();

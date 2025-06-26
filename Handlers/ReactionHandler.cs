@@ -14,7 +14,7 @@ namespace QuePoro.Handlers;
 public class ReactionCommands : ApplicationCommandsModule
 {
     [SlashCommand("add", "Adds a Reaction to you or a specified user (admin)")]
-    public async Task AddReaction(InteractionContext e,
+    public static async Task AddReaction(InteractionContext e,
         [Option("emoji", "emoji you want to have reacted")] String emoji,
         [Option("user", "The user you want to add to your reactions")] DiscordUser? user = null,
         [Option("trigger", "A message to trigger the reaction")] string? triggerMessage = null,
@@ -23,14 +23,14 @@ public class ReactionCommands : ApplicationCommandsModule
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         
-        if (e.Member?.VoiceState is null || e.Guild is null)
+        if (e.Member is null || e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
             return;
         }
         
-        DiscordEmoji? discordEmoji = await ReactionHandler.GetEmoji(e.Client, emoji);
+        DiscordEmoji? discordEmoji = ReactionHandler.GetEmoji(e.Client, emoji);
         if (discordEmoji is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
@@ -38,16 +38,9 @@ public class ReactionCommands : ApplicationCommandsModule
             return;
         }
 
-        UserRow? databaseUser = await Users.GetUser(e.UserId);
-
-        if (databaseUser is null && await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName ?? e.User.Username))
-            databaseUser = await Users.GetUser(e.UserId);
-        else
-        {
-            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                "An unexpected database error occured."));
-            return;
-        }
+        if (!await Users.UserExists(e.UserId))
+            await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName);
+        UserRow databaseUser = await Users.GetUser(e.UserId);
 
         switch (user)
         {
@@ -104,20 +97,21 @@ public class ReactionCommands : ApplicationCommandsModule
     }
     
     [SlashCommand("remove", "Removes a Reaction from you or a specified user (admin)")]
-    public async Task RemoveReaction(InteractionContext e,
-        [Option("emoji", "The emoji you want to remove")] String emoji,
-        [Option("user", "The user you want to remove a reaction from")] DiscordUser? user = null)
+    public static async Task RemoveReaction(InteractionContext e,
+        [Option("emoji", "The emoji of a reaction to remove")] string emoji,
+        [Option("user", "The user of a reaction to remove")] DiscordUser? user = null,
+        [Option("trigger", "The trigger message of the reaction to remove")] string? trigger = null)
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         
-        if (e.Member?.VoiceState is null || e.Guild is null)
+        if (e.Member is null || e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
             return;
         }
 
-        DiscordEmoji? discordEmoji = await ReactionHandler.GetEmoji(e.Client, emoji);
+        DiscordEmoji? discordEmoji = ReactionHandler.GetEmoji(e.Client, emoji);
 
         if (discordEmoji is null)
         {
@@ -126,44 +120,31 @@ public class ReactionCommands : ApplicationCommandsModule
             return;
         }
 
-        UserRow? databaseUser = await Users.GetUser(e.UserId);
+        if (!await Users.UserExists(e.UserId))
+            await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName);
+        UserRow databaseUser = await Users.GetUser(e.UserId);
         
-        if (databaseUser is null && await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName ?? e.User.Username))
-        {
-            databaseUser = await Users.GetUser(e.UserId);
-        }
-        else
+        if (!await Reactions.ReactionExists(emoji, user?.Id, trigger))
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                "An unexpected database error occured."));
+                "A reaction doesn't exist with the supplied parameters."));
             return;
         }
         
-        Guid? authorEmojiId = await Reactions.GetReactionId(e.UserId, discordEmoji.Name);
-        Guid? userEmojiId = user != null ? await Reactions.GetReactionId(user.Id, discordEmoji.Name) : null;
+        Guid emojiId = await Reactions.GetReactionId(discordEmoji.Name, user?.Id, trigger);
 
         switch (user)
         {
-            case not null when user == e.User && authorEmojiId is not null:
-                await Reactions.RemoveReaction((Guid)authorEmojiId);
+            case not null when user == e.User:
+                await Reactions.RemoveReaction(emojiId);
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                     $"Removed {emoji} from your reactions."));
                 return;
-            
-            case not null when user == e.User && authorEmojiId is null:
-                await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                    "That reaction doesn't exist for you."));
-                return;
                 
-            case not null when user != e.User && userEmojiId is not null && databaseUser is { Admin: true }:
-                await Reactions.RemoveReaction((Guid)userEmojiId);
+            case not null when user != e.User && databaseUser is { Admin: true }:
+                await Reactions.RemoveReaction(emojiId);
                 await e.EditResponseAsync(
                     new DiscordWebhookBuilder().WithContent($"Removed {emoji} from {user.Mention} reactions."));
-                return;
-            
-            case not null when user != e.User && userEmojiId is null && databaseUser is { Admin: true }:
-                await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                    $"That reaction doesn't exist for **{user.GlobalName}**."));
                 return;
             
             case not null when user != e.User && databaseUser is { Admin: false }:
@@ -185,7 +166,7 @@ public class ReactionCommands : ApplicationCommandsModule
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         
-        if (e.Member?.VoiceState is null || e.Guild is null)
+        if (e.Member is null || e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
@@ -223,17 +204,17 @@ public class ReactionCommands : ApplicationCommandsModule
     }
 }
 
-public class ReactionHandler()
+public static class ReactionHandler
 {
-    public static Task<DiscordEmoji?> GetEmoji(DiscordClient client, string emoji)
+    public static DiscordEmoji? GetEmoji(DiscordClient client, string emoji)
     {
         DiscordEmoji.TryFromUnicode(emoji, out DiscordEmoji? global);
-        if (global is not null) return Task.FromResult(global);
+        if (global is not null) return global;
         DiscordEmoji.TryFromGuildEmote(client, (ulong)Convert.ToInt64(emoji.Split(":")[2].Replace(">", "")),
             out DiscordEmoji? guild);
-        if (guild is not null) return Task.FromResult(guild);
+        if (guild is not null) return guild;
         DiscordEmoji.TryFromName(client, emoji, out DiscordEmoji? name);
-        return Task.FromResult(name ?? null);
+        return name;
     }
     
     private static async Task AddMessageReaction(MessageCreateEventArgs e, DiscordEmoji emoji)
@@ -253,12 +234,8 @@ public class ReactionHandler()
         
         foreach (ReactionRow reaction in userReactions)
         {
-            DiscordEmoji? discordEmoji = null;
-            DiscordEmoji.TryFromUnicode(reaction.Emoji, out discordEmoji);
-            if (discordEmoji is null)
-                DiscordEmoji.TryFromGuildEmote(client,
-                    (ulong)Convert.ToInt64(reaction.Emoji.Split(":")[2].Replace(">", "")),
-                    out discordEmoji);
+            DiscordEmoji? discordEmoji = GetEmoji(client, reaction.Emoji);
+            
             if (discordEmoji is null)
                 return;
             
