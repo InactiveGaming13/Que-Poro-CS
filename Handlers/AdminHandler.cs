@@ -415,6 +415,8 @@ public class AdminCommands : ApplicationCommandsModule
             return;
         }
 
+        await e.Client.UpdateStatusAsync(new DiscordActivity(statusMessage, statusType));
+
         await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
             $"Successfully set my status to **{statusType} {statusMessage}**."));
     }
