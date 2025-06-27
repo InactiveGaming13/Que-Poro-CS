@@ -195,7 +195,7 @@ public static class Reactions
             "SELECT created_at FROM reactions WHERE emoji_code=@emojiCode AND reacts_to=@userId AND trigger=@trigger";
         
         command.CommandText = query;
-        command.Parameters.Add(new NpgsqlParameter("emoji", NpgsqlDbType.Text) { Value = emoji });
+        command.Parameters.Add(new NpgsqlParameter("emojiCode", NpgsqlDbType.Text) { Value = emoji });
         command.Parameters.Add(new NpgsqlParameter("userId", NpgsqlDbType.Numeric)
         { Value = userId is null ? DBNull.Value : (long)userId });
         command.Parameters.Add(new NpgsqlParameter("trigger", NpgsqlDbType.Text)
