@@ -191,7 +191,7 @@ public class BannedPhraseCommands : ApplicationCommandsModule
             [Option("phrase", "The phrase to link")]
             string phrase,
             [Option("channel", "The channel to link"), ChannelTypes(ChannelType.Text)]
-            DiscordChannel? channel = null)
+            DiscordChannel channel)
         {
             await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource,
                 new DiscordInteractionResponseBuilder().AsEphemeral());
@@ -313,6 +313,13 @@ public static class BannedPhraseHandler
     public static async Task<string?> HandleBannedPhrases(string message)
     {
         List<BannedPhraseRow> bannedPhrases = await BannedPhrases.GetAllBannedPhrases();
-        return bannedPhrases.Where(bannedPhrase => message.Contains(bannedPhrase.Phrase)).Select(bannedPhrase => bannedPhrase.Reason ?? "Phrase not allowed.").FirstOrDefault();
+        foreach (BannedPhraseRow bannedPhrase in bannedPhrases)
+        {
+            if (!message.Contains(bannedPhrase.Phrase, StringComparison.CurrentCultureIgnoreCase))
+                continue;
+            return bannedPhrase.Reason ?? "Phrase not allowed.";
+        }
+
+        return null; 
     }
 }
