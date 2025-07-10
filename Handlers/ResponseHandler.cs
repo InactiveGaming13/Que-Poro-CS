@@ -212,7 +212,7 @@ public class ResponseCommands : ApplicationCommandsModule
             
             case null:
                 title = $"Responses for {e.User.GlobalName} in #{channel.Name}";
-                responses = await ResponseHandler.GetUserChannelResponses(e.UserId, channel.Id);
+                responses = await ResponseHandler.GetAllUserResponses(e.UserId, channel.Id);
                 break;
             
             case not null when channel is null:
@@ -222,7 +222,7 @@ public class ResponseCommands : ApplicationCommandsModule
             
             case not null:
                 title = $"Responses for {user.GlobalName} in #{channel.Name}";
-                responses = await ResponseHandler.GetUserChannelResponses(user.Id, channel.Id);
+                responses = await ResponseHandler.GetAllUserResponses(user.Id, channel.Id);
                 break;
         }
 
@@ -333,13 +333,17 @@ public class ResponseCommands : ApplicationCommandsModule
                 "I do not work in DMs."));
             return;
         }
-        
+
+        Random random = new();
+        List<MediaRow> mediaRows = Media.GetMediaCategory("test").GetAwaiter().GetResult();
         string content =
             $"<userMention> - Replaced with the authors mention (e.g <userMention> -> {e.User.Mention})\n" +
             $"<username> - Replaced with the authors username (e.g <username> -> {e.User.Username})\n" +
             $"<userGlobalName> - Replaced with the authors Global Name (e.g <userGlobalName> -> {e.User.GlobalName})\n" +
             $"<channelMention> - Replaced with the current channels mention (e.g <channelMention> -> {e.Channel.Mention})\n" +
-            $"<channelName> - Replaced with the current channels name (e.g <channelName> -> {e.Channel.Name})";
+            $"<channelName> - Replaced with the current channels name (e.g <channelName> -> {e.Channel.Name})\n" +
+            $"<mediaAlias:<Alias>> - Replaced with a specified Media Alias (e.g <mediaAlias:test> -> {Media.GetMedia("test").GetAwaiter().GetResult().Url}\n" +
+            $"<mediaCategory:<category>> - Replaced with a random Media from a category (e.g <mediaCategory:test> -> {mediaRows[random.Next(mediaRows.Count)].Url}";
         
         DiscordEmbed embedBuilder = new DiscordEmbedBuilder
         {
@@ -358,35 +362,46 @@ public static class ResponseHandler
         if (!user.RepliedTo)
             return;
 
-        List<ResponseRow> responses = await GetUserChannelResponses(user.Id, e.Channel.Id);
+        List<ResponseRow> responses = await GetAllUserResponses(user.Id, e.Channel.Id);
         
         if (responses.Count == 0) return;
+
+        Random random = new();
         
-        foreach (ResponseRow response in responses.Where(
-                     response => !response.ExactTrigger || 
-                                 e.Message.Content.Equals(response.TriggerMessage,
-                                     StringComparison.CurrentCultureIgnoreCase)
-                                 ).Where(response => e.Message.Content.Contains(
-                     response.TriggerMessage, StringComparison.CurrentCultureIgnoreCase)))
+        foreach (ResponseRow response in responses)
         {
-            Console.WriteLine(response.ResponseMessage);
-            Console.WriteLine(response.MediaAlias);
-            Console.WriteLine(response.MediaCategory);
+            response.TriggerMessage = HandleResponseString(e, response.TriggerMessage);
+            if (!e.Message.Content.Contains(response.TriggerMessage))
+                return;
+            
+            if (!e.Message.Content.Equals(response.TriggerMessage) && response.ExactTrigger)
+                return;
+            
             if (response.ResponseMessage is not null)
                 await e.Message.RespondAsync(new DiscordMessageBuilder().WithContent(
                     HandleResponseString(e, response.ResponseMessage)));
 
             if (response.MediaAlias is not null)
-                await e.Message.RespondAsync(new DiscordMessageBuilder().WithContent(
-                    $"Media alias placeholder: {response.MediaAlias}"));
-            
-            if (response.MediaCategory is not null)
-                await e.Message.RespondAsync(new DiscordMessageBuilder().WithContent(
-                    $"Media category placeholder: {response.MediaCategory}"));
+            {
+                try
+                {
+                    MediaRow mediaRow = Media.GetMedia(response.MediaAlias).GetAwaiter().GetResult();
+                    await e.Message.RespondAsync(mediaRow.Url);
+                }
+                catch (KeyNotFoundException)
+                {
+                    // ignore
+                }
+            }
+
+            if (response.MediaCategory is null) continue;
+            List<MediaRow> mediaRows = await Media.GetMediaCategory(response.MediaCategory);
+            if (mediaRows.Count is 0) continue;
+            await e.Message.RespondAsync(mediaRows[random.Next(mediaRows.Count)].Url);
         }
     }
 
-    public static async Task<List<ResponseRow>> GetUserChannelResponses(ulong userId, ulong channelId)
+    public static async Task<List<ResponseRow>> GetAllUserResponses(ulong userId, ulong channelId)
     {
         List<ResponseRow> globalResponses = await Responses.GetGlobalResponses();
         List<ResponseRow> userChannelResponses = await Responses.GetUserChannelResponses(userId, channelId);
@@ -396,11 +411,33 @@ public static class ResponseHandler
 
     private static string HandleResponseString(MessageCreateEventArgs e, string response)
     {
+        Random random = new();
         response = response.Replace("<userMention>", e.Author.Mention);
         response = response.Replace("<username>", e.Author.Username);
         response = response.Replace("<userGlobalName>", e.Author.GlobalName);
         response = response.Replace("<channelMention>", e.Channel.Mention);
         response = response.Replace("<channelName>", e.Channel.Name);
+        
+        string mediaAlias = response.Split("<mediaAlias:")[0].Split(">")[0];
+        if (!string.IsNullOrEmpty(mediaAlias))
+        {
+            try
+            {
+                MediaRow mediaRow = Media.GetMedia(mediaAlias).GetAwaiter().GetResult();
+                response = response.Replace($"<mediaAlias:{mediaAlias}>", mediaRow.Url);
+            }
+            catch (KeyNotFoundException)
+            {
+                // ignore
+            }
+        }
+            
+        
+        string mediaCategory = response.Split("<mediaCategory:")[0].Split(">")[0];
+        if (string.IsNullOrEmpty(mediaCategory)) return response;
+        List<MediaRow> mediaRows = Media.GetMediaCategory(mediaCategory).GetAwaiter().GetResult();
+        if (mediaRows.Count is 0) return response;
+        response = response.Replace($"<mediaCategory:{mediaCategory}>", mediaRows[random.Next(mediaRows.Count)].Url);
         return response;
     }
 

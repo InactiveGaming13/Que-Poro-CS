@@ -210,6 +210,15 @@ public static class BannedPhrases
         await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
+            string? reason = null;
+            try
+            {
+                reason = reader.GetString(reader.GetOrdinal("reason"));
+            }
+            catch (Exception)
+            {
+                // ignore
+            }
             bannedPhrases.Add(new BannedPhraseRow
             {
                 Id = reader.GetGuid(reader.GetOrdinal("id")),
@@ -217,6 +226,7 @@ public static class BannedPhrases
                 CreatedBy = (ulong)reader.GetInt64(reader.GetOrdinal("created_by")),
                 Severity = reader.GetInt32(reader.GetOrdinal("severity")),
                 Phrase = reader.GetString(reader.GetOrdinal("phrase")),
+                Reason = reason,
                 Enabled = reader.GetBoolean(reader.GetOrdinal("enabled"))
             });
         }

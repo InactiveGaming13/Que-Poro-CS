@@ -101,7 +101,7 @@ public static class MessageHandler
         string? delete = await BannedPhraseHandler.HandleBannedPhrases(e.Message.Content);
         if (delete is not null)
         {
-            string response = $"Hey {e.Author.Mention}! You can't send that here.";
+            string response = $"Hey {e.Author.Mention}! You can't send that here because {delete}.";
             DiscordChannel discordChannel = e.Message.Channel;
             await e.Message.DeleteAsync(delete);
             await discordChannel.SendMessageAsync(response);
