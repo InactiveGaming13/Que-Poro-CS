@@ -11,7 +11,7 @@ namespace QuePoro.Handlers;
 /// The class for handling Media commands.
 /// </summary>
 [SlashCommandGroup("media", "The media commands for the bot")]
-public class MediaHandler : ApplicationCommandsModule
+public class MediaCommands : ApplicationCommandsModule
 {
     /// <summary>
     /// Adds Media to the database.

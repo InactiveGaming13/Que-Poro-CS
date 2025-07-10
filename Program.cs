@@ -90,6 +90,7 @@ internal static class Program
         appCommands.RegisterGlobalCommands<BannedPhraseCommands>();
         appCommands.RegisterGlobalCommands<ConfigCommands>();
         appCommands.RegisterGlobalCommands<CreateAVcCommands>();
+        appCommands.RegisterGlobalCommands<MediaCommands>();
         appCommands.RegisterGlobalCommands<MessageCommands>();
         appCommands.RegisterGlobalCommands<MusicCommands>();
         appCommands.RegisterGlobalCommands<PrivacyCommands>();
