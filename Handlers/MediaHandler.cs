@@ -25,7 +25,7 @@ public class MediaCommands : ApplicationCommandsModule
         [Option("url", "The URL of the media")]
         string url,
         [Option("alias", "The Alias of the media")]
-        string? alias = null,
+        string alias,
         [Option("category", "The Category of the media")]
         string? category = null)
     {
@@ -60,7 +60,7 @@ public class MediaCommands : ApplicationCommandsModule
         }
 
         await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-            $"Successfully added media{(alias is null ? "" : $" with alias **{alias}**")}" +
+            $"Successfully added media with alias **{alias}**" +
             $"{(category is null ? "" : $" with category **{category}**")} to the bot."));
     }
 
