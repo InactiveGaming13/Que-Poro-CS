@@ -32,7 +32,7 @@ public class ResponseCommands : ApplicationCommandsModule
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         
-        if (e.Member is null || e.Guild is null)
+        if (e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
@@ -166,7 +166,7 @@ public class ResponseCommands : ApplicationCommandsModule
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         
-        if (e.Member is null || e.Guild is null)
+        if (e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
@@ -266,7 +266,7 @@ public class ResponseCommands : ApplicationCommandsModule
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         
-        if (e.Member is null || e.Guild is null)
+        if (e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
@@ -304,7 +304,7 @@ public class ResponseCommands : ApplicationCommandsModule
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         
-        if (e.Member is null || e.Guild is null)
+        if (e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
@@ -327,7 +327,7 @@ public class ResponseCommands : ApplicationCommandsModule
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         
-        if (e.Member is null || e.Guild is null)
+        if (e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));

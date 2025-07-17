@@ -31,7 +31,7 @@ public class MessageCommands : ApplicationCommandsModule
     )
     {
         // If the command came from a DM, ignore it.
-        if (e.Member is null || e.Guild is null)
+        if (e.Guild is null)
         {
             await e.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource,
                 new DiscordInteractionResponseBuilder().WithContent(
