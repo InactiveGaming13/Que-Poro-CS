@@ -23,7 +23,7 @@ public class ReactionCommands : ApplicationCommandsModule
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         
-        if (e.Member is null || e.Guild is null)
+        if (e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
@@ -104,7 +104,7 @@ public class ReactionCommands : ApplicationCommandsModule
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         
-        if (e.Member is null || e.Guild is null)
+        if (e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
@@ -123,6 +123,9 @@ public class ReactionCommands : ApplicationCommandsModule
         if (!await Users.UserExists(e.UserId))
             await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName);
         UserRow databaseUser = await Users.GetUser(e.UserId);
+
+        if (!databaseUser.Admin && user is null)
+            user = e.User;
         
         if (!await Reactions.ReactionExists(emoji, user?.Id, trigger))
         {
@@ -166,7 +169,7 @@ public class ReactionCommands : ApplicationCommandsModule
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         
-        if (e.Member is null || e.Guild is null)
+        if (e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));

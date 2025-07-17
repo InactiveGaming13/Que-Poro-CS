@@ -357,7 +357,7 @@ public static class Responses
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
         
-        const string query = "SELECT * FROM responses WHERE user_id=@userId";
+        const string query = "SELECT * FROM responses WHERE user_id=@userId OR user_id IS NULL";
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("userId", NpgsqlDbType.Numeric) { Value = (long)userId });

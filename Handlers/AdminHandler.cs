@@ -27,7 +27,7 @@ public class AdminCommands : ApplicationCommandsModule
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource,
             new DiscordInteractionResponseBuilder().AsEphemeral());
 
-        if (e.Member is null || e.Guild is null)
+        if (e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
@@ -80,7 +80,7 @@ public class AdminCommands : ApplicationCommandsModule
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource,
             new DiscordInteractionResponseBuilder().AsEphemeral());
 
-        if (e.Member is null || e.Guild is null)
+        if (e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
@@ -130,7 +130,7 @@ public class AdminCommands : ApplicationCommandsModule
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource,
             new DiscordInteractionResponseBuilder().AsEphemeral());
 
-        if (e.Member is null || e.Guild is null)
+        if (e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
@@ -180,7 +180,7 @@ public class AdminCommands : ApplicationCommandsModule
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource,
             new DiscordInteractionResponseBuilder().AsEphemeral());
 
-        if (e.Member is null || e.Guild is null)
+        if (e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
@@ -230,7 +230,7 @@ public class AdminCommands : ApplicationCommandsModule
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource,
             new DiscordInteractionResponseBuilder().AsEphemeral());
 
-        if (e.Member is null || e.Guild is null)
+        if (e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
@@ -265,7 +265,7 @@ public class AdminCommands : ApplicationCommandsModule
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource,
             new DiscordInteractionResponseBuilder().AsEphemeral());
 
-        if (e.Member is null || e.Guild is null)
+        if (e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
@@ -315,7 +315,7 @@ public class AdminCommands : ApplicationCommandsModule
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource,
             new DiscordInteractionResponseBuilder().AsEphemeral());
 
-        if (e.Member is null || e.Guild is null)
+        if (e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
@@ -371,7 +371,7 @@ public class AdminCommands : ApplicationCommandsModule
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource,
             new DiscordInteractionResponseBuilder().AsEphemeral());
         
-        if (e.Member is null || e.Guild is null)
+        if (e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
@@ -431,7 +431,7 @@ public class AdminCommands : ApplicationCommandsModule
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource,
             new DiscordInteractionResponseBuilder().AsEphemeral());
 
-        if (e.Member is null || e.Guild is null)
+        if (e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
