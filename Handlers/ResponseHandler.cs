@@ -342,8 +342,8 @@ public class ResponseCommands : ApplicationCommandsModule
             $"<userGlobalName> - Replaced with the authors Global Name (e.g <userGlobalName> -> {e.User.GlobalName})\n" +
             $"<channelMention> - Replaced with the current channels mention (e.g <channelMention> -> {e.Channel.Mention})\n" +
             $"<channelName> - Replaced with the current channels name (e.g <channelName> -> {e.Channel.Name})\n" +
-            $"<mediaAlias:<Alias>> - Replaced with a specified Media Alias (e.g <mediaAlias:test> -> {Media.GetMedia("test").GetAwaiter().GetResult().Url}\n" +
-            $"<mediaCategory:<category>> - Replaced with a random Media from a category (e.g <mediaCategory:test> -> {mediaRows[random.Next(mediaRows.Count)].Url}";
+            $"<mediaAlias:<Alias>> - Replaced with a specified Media Alias (e.g <mediaAlias:test> -> {Media.GetMedia("test").GetAwaiter().GetResult().Url})\n" +
+            $"<mediaCategory:<category>> - Replaced with a random Media from a category (e.g <mediaCategory:test> -> {mediaRows[random.Next(mediaRows.Count)].Url})";
         
         DiscordEmbed embedBuilder = new DiscordEmbedBuilder
         {
@@ -372,10 +372,10 @@ public static class ResponseHandler
         {
             response.TriggerMessage = HandleResponseString(e, response.TriggerMessage);
             if (!e.Message.Content.Contains(response.TriggerMessage))
-                return;
+                continue;
             
             if (!e.Message.Content.Equals(response.TriggerMessage) && response.ExactTrigger)
-                return;
+                continue;
             
             if (response.ResponseMessage is not null)
                 await e.Message.RespondAsync(new DiscordMessageBuilder().WithContent(
