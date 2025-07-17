@@ -123,6 +123,9 @@ public class ReactionCommands : ApplicationCommandsModule
         if (!await Users.UserExists(e.UserId))
             await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName);
         UserRow databaseUser = await Users.GetUser(e.UserId);
+
+        if (!databaseUser.Admin && user is null)
+            user = e.User;
         
         if (!await Reactions.ReactionExists(emoji, user?.Id, trigger))
         {
