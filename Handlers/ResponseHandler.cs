@@ -371,7 +371,7 @@ public static class ResponseHandler
         foreach (ResponseRow response in responses)
         {
             response.TriggerMessage = HandleResponseString(e, response.TriggerMessage);
-            if (!e.Message.Content.Contains(response.TriggerMessage))
+            if (!e.Message.Content.Contains(response.TriggerMessage, StringComparison.CurrentCultureIgnoreCase))
                 continue;
             
             if (!e.Message.Content.Equals(response.TriggerMessage) && response.ExactTrigger)
@@ -463,15 +463,14 @@ public static class ResponseHandler
                 "You are not authorised to modify other users responses."));
             return null;
         }
-        
-        Guid? responseId = await Responses.GetResponseId(trigger, user?.Id ?? e.UserId, channel?.Id, response,
-            mediaAlias, mediaCategory, exact);
 
-        if (responseId is not null) return responseId;
+        if (await Responses.ResponseExists(trigger, user?.Id, channel?.Id, response, mediaAlias, mediaCategory, exact,
+                enabled))
+            return await Responses.GetResponseId(trigger, user?.Id, channel?.Id, response, mediaAlias, mediaCategory,
+                exact);
         
         await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
             "Unable to find any response with the given parameters."));
         return null;
-
     }
 }
