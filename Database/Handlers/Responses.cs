@@ -669,4 +669,65 @@ public static class Responses
 
         return responses;
     }
+
+    public static async Task<bool> ResponseExists(string trigger, ulong? userId = null, ulong? channelId = null,
+        string? response = null, string? mediaAlias = null, string? mediaCategory = null, bool? exact = null,
+        bool? enabled = null)
+    {
+        if (response is null && userId is null && channelId is null && mediaAlias is null && mediaCategory is null
+            && exact is null && enabled is null) return false;
+
+        await using NpgsqlConnection connection = await Database.GetConnection();
+        await using NpgsqlCommand command = connection.CreateCommand();
+
+        string query =
+            "SELECT id FROM responses WHERE trigger LIKE @trigger";
+
+        if (userId is not null)
+        {
+            query += " AND user_id=@userId";
+            command.Parameters.Add(new NpgsqlParameter("userId", NpgsqlDbType.Numeric) { Value = (long)userId });
+        }
+
+        if (channelId is not null)
+        {
+            query += " AND channel_id=@channelId";
+            command.Parameters.Add(new NpgsqlParameter("channelId", NpgsqlDbType.Numeric) { Value = (long)channelId });
+        }
+
+        if (response is not null)
+        {
+            query += " AND response LIKE @response";
+            command.Parameters.Add(new NpgsqlParameter("response", NpgsqlDbType.Text) { Value = response });
+        }
+
+        if (mediaAlias is not null)
+        {
+            query += " AND media_alias LIKE @mediaAlias";
+            command.Parameters.Add(new NpgsqlParameter("mediaAlias", NpgsqlDbType.Text) { Value = mediaAlias });
+        }
+
+        if (mediaCategory is not null)
+        {
+            query += " AND media_category LIKE @mediaCategory";
+            command.Parameters.Add(new NpgsqlParameter("mediaCategory", NpgsqlDbType.Text) { Value = mediaCategory });
+        }
+
+        if (exact is not null)
+        {
+            query += " AND exact=@exact";
+            command.Parameters.Add(new NpgsqlParameter("exact", NpgsqlDbType.Boolean) { Value = exact });
+        }
+
+        if (enabled is not null)
+        {
+            query += " AND enabled=@enabled";
+            command.Parameters.Add(new NpgsqlParameter("enabled", NpgsqlDbType.Boolean) { Value = enabled });
+        }
+
+        command.CommandText = query;
+        command.Parameters.Add(new NpgsqlParameter("trigger", NpgsqlDbType.Text) { Value = trigger });
+
+        return command.ExecuteScalar() is not null;
+    }
 }
