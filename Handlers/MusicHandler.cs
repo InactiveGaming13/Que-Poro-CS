@@ -17,25 +17,38 @@ namespace QuePoro.Handlers;
 [SlashCommandGroup("music", "Music commands")]
 public class MusicCommands : ApplicationCommandsModule
 {
+    /// <summary>
+    /// Plays a song in a Voice Channel.
+    /// </summary>
+    /// <param name="e">The Interaction Context.</param>
+    /// <param name="query">The search term or link.</param>
+    /// <param name="force">Whether to force the query to the top of the queue.</param>
     [SlashCommand("play", "Plays a song")]
-    public async Task PlayTrack(InteractionContext e,
+    public static async Task PlayTrack(InteractionContext e,
         [Option("song", "Song title to play")] string query,
         [Option("force", "Force play and override the queue")]
         bool force = false)
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         // Important to check the voice state itself first, as it may throw a NullReferenceException if they don't have a voice state.
-        if (e.Member?.VoiceState is null || e.Guild is null)
+        if (e.Member is null || e.Guild is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "I do not work in DMs."));
             return;
         }
 
-        if (e.Member.VoiceState.Channel is null)
+        if (e.Member.VoiceState is { Channel: null } or null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "You are not in a vc."));
+            return;
+        }
+
+        if (!VoiceHandler.UsingLavaLink)
+        {
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                "I am not configured for voice at the moment."));
             return;
         }
 
@@ -54,158 +67,30 @@ public class MusicCommands : ApplicationCommandsModule
             await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName);
         UserRow user = await Users.GetUser(e.UserId);
 
-        LavalinkGuildPlayer? guildPlayer = VoiceHandler.Lavalink.GetGuildPlayer(e.Guild);
-        
-        if (guildPlayer is null)
+        if (!await CheckGuildPlayer(VoiceHandler.Lavalink.GetGuildPlayer(e.Guild), e.Guild, e.Member.VoiceState.Channel))
         {
-            LavalinkSession session = VoiceHandler.Lavalink.ConnectedSessions.Values.First();
-            await session.ConnectAsync(e.Member.VoiceState.Channel);
-            guildPlayer = VoiceHandler.Lavalink.GetGuildPlayer(e.Guild);
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                "I am not configured for voice at the moment."));
+            return;
         }
         
-        if (guildPlayer is not null && guildPlayer.Channel != e.Channel && !user.Admin &&
-            !e.Member.Permissions.HasPermission(Permissions.MoveMembers))
+        LavalinkGuildPlayer guildPlayer = VoiceHandler.Lavalink.GetGuildPlayer(e.Guild)!;
+        
+        if (guildPlayer.Channel != e.Channel && (!user.Admin || 
+            !e.Member.Permissions.HasPermission(Permissions.MoveMembers)))
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                     "You are not in my vc and you lack permission to move me."));
             return;
         }
-        
-        LavalinkTrackLoadingResult loadResult;
 
-        await GetResult(query);
-        return;
+        LavalinkSearchType searchType = query.Contains("https://", StringComparison.CurrentCultureIgnoreCase) ? LavalinkSearchType.Plain : LavalinkSearchType.Youtube;
 
-        async Task GetResult(string title, bool useYt = false)
-        {
-            loadResult = useYt switch
-            {
-                true => await guildPlayer.LoadTracksAsync(LavalinkSearchType.Youtube, title),
-                false => await guildPlayer.LoadTracksAsync(LavalinkSearchType.Plain, title)
-            };
-            
-            if (loadResult.LoadType is LavalinkLoadResultType.Empty or LavalinkLoadResultType.Error)
-            {
-                if (!useYt)
-                {
-                    await GetResult(title, true);
-                    return;
-                }
-                
-                await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                    $"Failed to search for {title}."));
-            }
-            
-            LavalinkTrack? track = loadResult.LoadType switch
-            {
-                LavalinkLoadResultType.Track => loadResult.GetResultAs<LavalinkTrack>(),
-                LavalinkLoadResultType.Search => loadResult.GetResultAs<List<LavalinkTrack>>().First(),
-                _ => null
-            };
-            
-            List<LavalinkTrack>? queue = loadResult.LoadType switch
-            {
-                LavalinkLoadResultType.Playlist => loadResult.GetResultAs<LavalinkPlaylist>().Tracks,
-                _ => null
-            };
-
-            if (track is null && queue is null)
-            {
-                await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                    $"Failed to find {title}"));
-            }
-
-            if (guildPlayer.CurrentTrack != null)
-            {
-                string embedTitle = "Added playlist to queue";
-                switch (force)
-                {
-                    case true when e.Member.Permissions.HasPermission(Permissions.Administrator) && track != null:
-                        await guildPlayer.PlayAsync(track);
-                        await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                            $"Force played [{track?.Info.Title}]({track?.Info.Uri}) by {track?.Info.Author}."));
-                        return;
-                    
-                    case true when e.Member.Permissions.HasPermission(Permissions.Administrator) && queue != null:
-                        embedTitle = "Force added playlist to queue";
-                        break;
-                    
-                    case false when !e.Member.Permissions.HasPermission(Permissions.Administrator) && track != null:
-                        guildPlayer.AddToQueue(track);
-                        await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                            $"Added [{track?.Info.Title}]({track?.Info.Uri}) by {track?.Info.Author} to the queue."));
-                        break;
-                }
-                
-                string? tracksAdded = AddPlaylistToQueue();
-
-                if (queue is { Count: >= 2 })
-                {
-                    DiscordEmbed embed = new DiscordEmbedBuilder
-                    {
-                        Color = DiscordColor.Blue,
-                        Title = embedTitle,
-                        Description = tracksAdded
-                    }.Build();
-                    await e.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embed));
-                    return;
-                }
-                
-                await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                    $"Added [{track?.Info.Title}]({track?.Info.Uri}) by {track?.Info.Author} to the queue."));
-                return;
-            }
-                
-            if (track != null) await guildPlayer.PlayAsync(track);
-            
-            if (queue is { Count: >= 2 })
-            {
-                AddPlaylistToQueue();
-                track = guildPlayer.Queue[0];
-                guildPlayer.PlayQueue();
-            }
-            
-            if (track == null)
-            {
-                await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                    $"Failed to play {title} because I lost it."));
-                return;
-            }
-            
-            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                $"Now playing [{track?.Info.Title}]({track?.Info.Uri}) by {track?.Info.Author}."));
-            return;
-
-            string? AddPlaylistToQueue()
-            {
-                string? tracksAdded = null;
-                
-                if (queue == null)
-                {
-                    if (track == null) return tracksAdded;
-                    guildPlayer.AddToQueue(track);
-                    tracksAdded += $"{track.Info.Title} by {track.Info.Author}";
-                    return tracksAdded;   
-                }
-                
-                for (int i = 0; i < queue.Count -1; i++)
-                {
-                    if (force)
-                        guildPlayer.AddToQueueAt(i, queue[i]);
-                    else
-                        guildPlayer.AddToQueue(queue[i]);
-                
-                    tracksAdded += $"{queue[i].Info.Title} by {queue[i].Info.Author}";
-                    if (i < queue.Count - 1) tracksAdded += "\n";
-                }
-                
-                return tracksAdded;
-            }
-        }
+        await MusicHandler.GetResult(e, guildPlayer, query, searchType, force);
     }
 
     [SlashCommand("pause", "Pause the current song")]
-    public async Task PauseTrack(InteractionContext e)
+    public static async Task PauseTrack(InteractionContext e)
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         if (e.Member?.VoiceState is null || e.Guild is null)
@@ -248,7 +133,7 @@ public class MusicCommands : ApplicationCommandsModule
     }
     
     [SlashCommand("resume", "Resumes the current song")]
-    public async Task ResumeTrack(InteractionContext e)
+    public static async Task ResumeTrack(InteractionContext e)
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         if (e.Member?.VoiceState is null || e.Guild is null)
@@ -285,7 +170,7 @@ public class MusicCommands : ApplicationCommandsModule
     }
     
     [SlashCommand("stop", "Stops the current song")]
-    public async Task StopTrack(InteractionContext e,
+    public static async Task StopTrack(InteractionContext e,
         [Option("clear_queue", "Clears the queue")] bool clear = false)
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
@@ -330,7 +215,7 @@ public class MusicCommands : ApplicationCommandsModule
     }
     
     [SlashCommand("skip", "skips the current song")]
-    public async Task SkipTrack(InteractionContext e)
+    public static async Task SkipTrack(InteractionContext e)
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         if (e.Member?.VoiceState is null || e.Guild is null)
@@ -368,7 +253,7 @@ public class MusicCommands : ApplicationCommandsModule
     }
     
     [SlashCommand("currently_playing", "Gets the current song")]
-    public async Task CurrentlyPlaying(InteractionContext e)
+    public static async Task CurrentlyPlaying(InteractionContext e)
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         if (e.Member?.VoiceState is null || e.Guild is null)
@@ -406,7 +291,7 @@ public class MusicCommands : ApplicationCommandsModule
     public class MusicQueueCommands : ApplicationCommandsModule
     {
         [SlashCommand("list", "Lists the current queue")]
-        public async Task GetQueue(InteractionContext e)
+        public static async Task GetQueue(InteractionContext e)
         {
             await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
             if (e.Member?.VoiceState is null || e.Guild is null)
@@ -544,7 +429,8 @@ public class MusicCommands : ApplicationCommandsModule
     
         [SlashCommand("set", "Sets the volume of the bot")]
         public static async Task SetVolume(InteractionContext e,
-            [Option("volume", "The volume to set the bot to"), MinimumValue(0), MaximumValue(200)] int vol)
+            [Option("volume", "The volume to set the bot to"),
+             MinimumValue(0), MaximumValue(200)] int volume)
         {
             await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
             if (e.Member is null || e.Guild is null)
@@ -570,8 +456,201 @@ public class MusicCommands : ApplicationCommandsModule
                 return;
             }
     
-            await guildPlayer.SetVolumeAsync(vol);
-            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Set the volume to {vol}."));
+            await guildPlayer.SetVolumeAsync(volume);
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Set the volume to {volume}."));
         }
+    }
+    
+    public class LavalinkQueueEntry : IQueueEntry
+    {
+        public LavalinkTrack? Track { get; set; }
+        
+        public async Task<bool> BeforePlayingAsync(LavalinkGuildPlayer guildPlayer)
+        {
+            Track ??= guildPlayer.Queue[0];
+            
+            await guildPlayer.Channel.SendMessageAsync(new DiscordMessageBuilder().WithContent(
+                $"Now playing BEFORE [{Track.Info.Title}]({Track.Info.Uri}) by {Track.Info.Author}."));
+            return true;
+        }
+        
+        public async Task AfterPlayingAsync(LavalinkGuildPlayer guildPlayer)
+        {
+            if (guildPlayer.Queue.Count is 0)
+                return;
+            
+            Track = guildPlayer.Queue[0];
+            await guildPlayer.Channel.SendMessageAsync(new DiscordMessageBuilder().WithContent(
+                $"Now playing AFTER [{Track.Info.Title}]({Track.Info.Uri}) by {Track.Info.Author}."));
+        }
+    }
+
+    private static class MusicHandler
+    {
+        public static async Task GetResult(InteractionContext e, LavalinkGuildPlayer guildPlayer, string title, LavalinkSearchType searchType = LavalinkSearchType.Plain, bool force = false)
+        {
+            LavalinkTrackLoadingResult loadResult = await guildPlayer.LoadTracksAsync(searchType, title);
+
+            if (loadResult.LoadType is LavalinkLoadResultType.Empty or LavalinkLoadResultType.Error)
+            {
+                if (searchType is not LavalinkSearchType.Youtube)
+                {
+                    await GetResult(e, guildPlayer, title, LavalinkSearchType.Youtube, force);
+                    return;
+                }
+                
+                await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Failed to search for {title}."));
+                return;
+            }
+
+            LavalinkTrack? searchTrack = loadResult.LoadType switch
+            {
+                LavalinkLoadResultType.Track => loadResult.GetResultAs<LavalinkTrack>(),
+                LavalinkLoadResultType.Search => loadResult.GetResultAs<List<LavalinkTrack>>().First(),
+                _ => null
+            };
+
+            LavalinkPlaylist? playlist = loadResult.LoadType switch
+            {
+                LavalinkLoadResultType.Playlist => loadResult.GetResultAs<LavalinkPlaylist>(),
+                _ => null
+            };
+
+            if (playlist is { Tracks.Count: 0 } or null && searchTrack is null)
+            {
+                await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent($"Failed to find {title}"));
+                return;
+            }
+            
+            switch (playlist)
+            {
+                case null when !force && guildPlayer.CurrentTrack is null:
+                    await guildPlayer.PlayAsync(searchTrack);
+                    await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                        $"Now playing [{searchTrack.Info.Title}]({searchTrack.Info.Uri}) by {searchTrack.Info.Author}."));
+                    break;
+                
+                case null when !force && guildPlayer.CurrentTrack is not null:
+                    AddTrackToQueue(guildPlayer, searchTrack);
+                    await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                        $"Added [{searchTrack.Info.Title}]({searchTrack.Info.Uri}) by {searchTrack.Info.Author} to the queue."));
+                    break;
+                
+                case null when force && e.Member.Permissions.HasPermission(Permissions.Administrator):
+                    ForceAddTrackToQueue(guildPlayer, searchTrack);
+                    await guildPlayer.SkipAsync();
+                    await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                        $"Force playing [{searchTrack.Info.Title}]({searchTrack.Info.Uri}) by {searchTrack.Info.Author}."));
+                    break;
+                    
+                case { Tracks.Count: 1 } when !force && guildPlayer.CurrentTrack is null:
+                    await guildPlayer.PlayAsync(playlist.Tracks.First());
+                    await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                        $"Now playing [{playlist.Tracks.First().Info.Title}]({playlist.Tracks.First().Info.Uri}) by {playlist.Tracks.First().Info.Author}."));
+                    break;
+                
+                case { Tracks.Count: 1 } when !force && guildPlayer.CurrentTrack is not null:
+                    AddTrackToQueue(guildPlayer, playlist.Tracks.First());
+                    await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                        $"Added [{playlist.Tracks.First().Info.Title}]({playlist.Tracks.First().Info.Uri}) by {playlist.Tracks.First().Info.Author} to the queue."));
+                    break;
+                
+                case { Tracks.Count: 1 } when force && e.Member.Permissions.HasPermission(Permissions.Administrator):
+                    ForceAddTrackToQueue(guildPlayer, playlist.Tracks.First());
+                    await guildPlayer.SkipAsync();
+                    await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                        $"Force playing [{playlist.Tracks.First().Info.Title}]({playlist.Tracks.First().Info.Uri}) by {playlist.Tracks.First().Info.Author}."));
+                    break;
+                
+                case { Tracks.Count: > 1 } when !force && guildPlayer.CurrentTrack is null:
+                    AddPlaylistToQueue(guildPlayer, playlist);
+                    await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                        "Added playlist to queue."));
+                    guildPlayer.PlayQueue();
+                    await e.FollowUpAsync(new DiscordFollowupMessageBuilder().WithContent(
+                        $"Now playing [{playlist.Tracks.First().Info.Title}]({playlist.Tracks.First().Info.Uri}) by {playlist.Tracks.First().Info.Author}."));
+                    break;
+                
+                case { Tracks.Count: > 1 } when !force && guildPlayer.CurrentTrack is not null:
+                    AddPlaylistToQueue(guildPlayer, playlist);
+                    await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                        "Added playlist to queue."));
+                    break;
+                
+                case { Tracks.Count: > 1 } when force && e.Member.Permissions.HasPermission(Permissions.Administrator):
+                    ForceAddPlaylistToQueue(guildPlayer, playlist);
+                    await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                        "Force added playlist to queue."));
+                    guildPlayer.PlayQueue();
+                    await e.FollowUpAsync(new DiscordFollowupMessageBuilder().WithContent(
+                        $"Force playing [{playlist.Tracks.First().Info.Title}]({playlist.Tracks.First().Info.Uri}) by {playlist.Tracks.First().Info.Author}."));
+                    break;
+                
+                default:
+                    AddPlaylistToQueue(guildPlayer, playlist);
+                    await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                        $"Added {(playlist.Tracks.Count is 1 ? $"[{playlist.Tracks.First().Info.Title}]({playlist.Tracks.First().Info.Uri}) by " +
+                                                               $"{playlist.Tracks.First().Info.Author}" : "playlist")} to the queue " +
+                        $"(You lack the permission to force play tracks)."));
+                    break;
+            }
+        }
+    }
+
+    private static void AddPlaylistToQueue(LavalinkGuildPlayer guildPlayer, LavalinkPlaylist playlist)
+    {
+        switch (playlist.Tracks)
+        {
+            case { Count: 0 }:
+                return;
+            
+            case { Count: 1 }:
+                AddTrackToQueue(guildPlayer, playlist.Tracks[0]);
+                return;
+        }
+        
+        guildPlayer.AddToQueue(playlist);
+    }
+        
+    private static void ForceAddPlaylistToQueue(LavalinkGuildPlayer guildPlayer, LavalinkPlaylist playlist)
+    {
+        switch (playlist.Tracks)
+        {
+            case { Count: 0 }:
+                return;
+            
+            case { Count: 1 }:
+                ForceAddTrackToQueue(guildPlayer, playlist.Tracks[0]);
+                return;
+        }
+        
+        for (int i = 0; i < playlist.Tracks.Count -1; i++)
+            guildPlayer.AddToQueueAt(i, playlist.Tracks[i]);
+    }
+        
+    private static void AddTrackToQueue(LavalinkGuildPlayer guildPlayer, LavalinkTrack track)
+    {
+        guildPlayer.AddToQueue(track);
+    }
+        
+    private static void ForceAddTrackToQueue(LavalinkGuildPlayer guildPlayer, LavalinkTrack track)
+    {
+        guildPlayer.AddToQueueAt(0, track);
+    }
+
+    private static async Task<bool> CheckGuildPlayer(LavalinkGuildPlayer? guildPlayer, DiscordGuild guild,
+        DiscordChannel channel)
+    {
+        if (guildPlayer is not null)
+            return true;
+
+        if (!VoiceHandler.UsingLavaLink || VoiceHandler.Lavalink is null)
+            return false;
+
+        LavalinkSession session = VoiceHandler.Lavalink.ConnectedSessions.Values.First();
+
+        await session.ConnectAsync(channel);
+
+        return VoiceHandler.Lavalink.GetGuildPlayer(guild) is not null;
     }
 }

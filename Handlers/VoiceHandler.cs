@@ -25,7 +25,8 @@ public static class LavalinkCfg
         Password = Environment.GetEnvironmentVariable("LAVALINK_PASSWORD")!,
         RestEndpoint = Endpoint,
         SocketEndpoint = Endpoint,
-        EnableBuiltInQueueSystem = true
+        EnableBuiltInQueueSystem = true,
+        QueueEntryFactory = () => new MusicCommands.LavalinkQueueEntry()
     });
 }
 
