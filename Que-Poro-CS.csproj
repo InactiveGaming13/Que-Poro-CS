@@ -14,7 +14,7 @@
     </Target>
 
     <ItemGroup>
-      <PackageReference Include="DisCatSharp" Version="10.7.0-nightly-007" />
+      <PackageReference Include="DisCatSharp" Version="10.7.0-nightly-009" />
       <PackageReference Include="DisCatSharp.Analyzer.Roselyn" Version="6.2.5">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
