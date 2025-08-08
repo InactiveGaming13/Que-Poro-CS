@@ -76,11 +76,9 @@ public static class MessageHandler
         // Check if the database contains the Guild, Channel, User and User Stats and add them if it doesn't.
         if (!await Guilds.GuildExists(e.Guild.Id))
             await Guilds.AddGuild(e.Guild.Id, e.Guild.Name);
-        GuildRow guild = await Guilds.GetGuild(e.Guild.Id);
         
         if (!await Channels.ChannelExists(e.Channel.Id))
             await Channels.AddChannel(e.Channel.Id, e.Guild.Id, e.Channel.Name, e.Channel.Topic);
-        ChannelRow channel = await Channels.GetChannel(e.Channel.Id);
         
         if (!await Users.UserExists(e.Author.Id))
             await Users.AddUser(e.Author.Id, e.Author.Username, e.Author.GlobalName);
@@ -88,14 +86,14 @@ public static class MessageHandler
         
         if (!await UserStats.StatExists(e.Author.Id, e.Channel.Id, e.Guild.Id))
             await UserStats.AddStat(e.Author.Id, e.Channel.Id, e.Guild.Id);
-        UserStatRow userStats = await UserStats.GetStat(e.Author.Id, e.Channel.Id, e.Guild.Id);
+        UserStatRow userStats = await UserStats.GetUserStat(e.Author.Id, e.Channel.Id, e.Guild.Id);
         
         // If the message starts with “@ignore”, ignore the message.
         if (e.Message.Content.StartsWith("@ignore", StringComparison.CurrentCultureIgnoreCase))
             return;
         
         // If the User, Channel and Guild has tracking enabled, update the User Stats.
-        if (user is { Tracked: true } && channel is { Tracked: true } && guild is { Tracked: true })
+        if (userStats is { Tracked: true })
             await UserStats.ModifyStat(e.Author.Id, e.Channel.Id, e.Guild.Id, sent: userStats.SentMessages ++);
 
         string? delete = await BannedPhraseHandler.HandleBannedPhrases(e.Message.Content);
@@ -118,74 +116,5 @@ public static class MessageHandler
         // If the User has Responses enabled, handle them.
         if (user is { RepliedTo: true })
             await ResponseHandler.HandleUserResponses(e, user);
-    }
-
-    /// <summary>
-    /// Handles the Message deleted event.
-    /// </summary>
-    /// <param name="client">The Bot.</param>
-    /// <param name="e">The Interaction arguments.</param>
-    /// <returns></returns>
-    public static async Task MessageDeleted(DiscordClient client, MessageDeleteEventArgs e)
-    {
-        // If the Guild is null, ignore.
-        if (e.Guild is null || e.Message.Author is null)
-            return;
-        
-        // Check if the database contains the Guild, Channel, User and User Stats and add them if it doesn't.
-        if (!await Guilds.GuildExists(e.Guild.Id))
-            await Guilds.AddGuild(e.Guild.Id, e.Guild.Name);
-        GuildRow guild = await Guilds.GetGuild(e.Guild.Id);
-        
-        if (!await Channels.ChannelExists(e.Channel.Id))
-            await Channels.AddChannel(e.Channel.Id, e.Guild.Id, e.Channel.Name, e.Channel.Topic);
-        ChannelRow channel = await Channels.GetChannel(e.Channel.Id);
-        
-        if (!await Users.UserExists(e.Message.Author.Id))
-            await Users.AddUser(e.Message.Author.Id, e.Message.Author.Username, e.Message.Author.GlobalName);
-        UserRow user = await Users.GetUser(e.Message.Author.Id);
-        
-        if (!await UserStats.StatExists(e.Message.Author.Id, e.Channel.Id, e.Guild.Id))
-            await UserStats.AddStat(e.Message.Author.Id, e.Channel.Id, e.Guild.Id);
-        UserStatRow userStats = await UserStats.GetStat(e.Message.Author.Id, e.Channel.Id, e.Guild.Id);
-
-        // Increase the Deleted Messages by one for the user.
-        if (guild is { Tracked: true } && channel is { Tracked: true } && user is { Tracked: true })
-            await UserStats.ModifyStat(e.Message.Author.Id, e.Channel.Id, e.Guild.Id,
-                deleted: userStats.DeletedMessages ++);
-    }
-
-    /// <summary>
-    /// Handles the Message updated event.
-    /// </summary>
-    /// <param name="client">The Bot.</param>
-    /// <param name="e">The Interaction arguments.</param>
-    /// <returns></returns>
-    public static async Task MessageUpdated(DiscordClient client, MessageUpdateEventArgs e)
-    {
-        if (e.Guild is null || e.Author is null)
-            return;
-        
-        // Check if the database contains the Guild, Channel, User and User Stats and add them if it doesn't.
-        if (!await Guilds.GuildExists(e.Guild.Id))
-            await Guilds.AddGuild(e.Guild.Id, e.Guild.Name);
-        GuildRow guild = await Guilds.GetGuild(e.Guild.Id);
-        
-        if (!await Channels.ChannelExists(e.Channel.Id))
-            await Channels.AddChannel(e.Channel.Id, e.Guild.Id, e.Channel.Name, e.Channel.Topic);
-        ChannelRow channel = await Channels.GetChannel(e.Channel.Id);
-        
-        if (!await Users.UserExists(e.Message.Author.Id))
-            await Users.AddUser(e.Message.Author.Id, e.Message.Author.Username, e.Message.Author.GlobalName);
-        UserRow user = await Users.GetUser(e.Message.Author.Id);
-        
-        if (!await UserStats.StatExists(e.Message.Author.Id, e.Channel.Id, e.Guild.Id))
-            await UserStats.AddStat(e.Message.Author.Id, e.Channel.Id, e.Guild.Id);
-        UserStatRow userStats = await UserStats.GetStat(e.Message.Author.Id, e.Channel.Id, e.Guild.Id);
-
-        // Increase the Edited Messages by one for the user.
-        if (guild is { Tracked: true } && channel is { Tracked: true } && user is { Tracked: true })
-            await UserStats.ModifyStat(e.Message.Author.Id, e.Channel.Id, e.Guild.Id,
-                edited: userStats.EditedMessages ++);
     }
 }

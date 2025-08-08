@@ -9,6 +9,5 @@ public class UserRow
     public required bool Admin { get; set; }
     public required bool RepliedTo { get; set; }
     public required bool ReactedTo { get; set; }
-    public required bool Tracked { get; set; }
     public required bool Banned { get; set; }
 }

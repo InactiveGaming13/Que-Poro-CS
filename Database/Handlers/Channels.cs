@@ -101,14 +101,8 @@ public static class Channels
 
         if (topic != null)
         {
-            query += " topic=@topic,";
+            query += " topic=@topic";
             command.Parameters.Add(new NpgsqlParameter("topic", NpgsqlDbType.Text) { Value = topic });
-        }
-        
-        if (tracked != null)
-        {
-            query += " tracked=@tracked,";
-            command.Parameters.Add(new NpgsqlParameter("tracked", NpgsqlDbType.Boolean) { Value = tracked });
         }
 
         if (query.EndsWith(','))
@@ -167,7 +161,6 @@ public static class Channels
                     Id = (ulong)reader.GetInt64(reader.GetOrdinal("id")),
                     CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
                     Name = reader.GetString(reader.GetOrdinal("name")),
-                    Tracked = reader.GetBoolean(reader.GetOrdinal("tracked")),
                     GuildId = (ulong)reader.GetInt64(reader.GetOrdinal("guild_id")),
                     Description = description,
                 };

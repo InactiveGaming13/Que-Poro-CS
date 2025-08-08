@@ -79,8 +79,6 @@ internal static class Program
         
         // Set functions for various events
         discord.MessageCreated += MessageHandler.MessageCreated;
-        discord.MessageDeleted += MessageHandler.MessageDeleted;
-        discord.MessageUpdated += MessageHandler.MessageUpdated;
         discord.GuildMemberAdded += GuildHandler.MemberAdded;
         discord.VoiceStateUpdated += VoiceHandler.VoiceStateUpdated;
         

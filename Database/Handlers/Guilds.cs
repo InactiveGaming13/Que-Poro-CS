@@ -94,10 +94,9 @@ public static class Guilds
     /// <param name="robloxAlertEnabled">Whether to handle roblox alerts.</param>
     /// <param name="robloxAlertInterval">The interval for each roblox alert.</param>
     /// <returns>Whether the operation succeeds.</returns>
-    public static async Task<bool> ModifyGuild(ulong id, string? name = null, bool? tracked = null,
-        ulong? tempVcChannel = null, bool? tempVcEnabled = null, int? tempVcDefaultMemberLimit = null,
-        int? tempVcDefaultBitrate = null, ulong? robloxAlertChannel = null, bool? robloxAlertEnabled = null,
-        int? robloxAlertInterval = null)
+    public static async Task<bool> ModifyGuild(ulong id, string? name = null, ulong? tempVcChannel = null,
+        bool? tempVcEnabled = null, int? tempVcDefaultMemberLimit = null, int? tempVcDefaultBitrate = null,
+        ulong? robloxAlertChannel = null, bool? robloxAlertEnabled = null, int? robloxAlertInterval = null)
     {
         if (name == null && tempVcChannel == null && tempVcDefaultMemberLimit == null && tempVcDefaultBitrate == null &&
             robloxAlertChannel == null && robloxAlertInterval == null)
@@ -113,16 +112,10 @@ public static class Guilds
             query += " name=@name,";
             command.Parameters.Add(new NpgsqlParameter("name", NpgsqlDbType.Text) { Value = name });
         }
-        
-        if (tracked != null)
-        {
-            query += " tracked=@tracked,";
-            command.Parameters.Add(new NpgsqlParameter("tracked", NpgsqlDbType.Boolean) { Value = tracked });
-        }
 
         if (tempVcChannel is not null)
         {
-            query += " temp_vc_channel=@tempVcChannel";
+            query += " temp_vc_channel=@tempVcChannel,";
             command.Parameters.Add(tempVcChannel is 0 
                 ? new NpgsqlParameter("tempVcChannel", NpgsqlDbType.Numeric) { Value = DBNull.Value } 
                 : new NpgsqlParameter("tempVcChannel", NpgsqlDbType.Numeric) { Value = (long)tempVcChannel });
@@ -151,7 +144,7 @@ public static class Guilds
 
         if (robloxAlertChannel is not null)
         {
-            query += " roblox_alert_channel=@robloxAlertChannel";
+            query += " roblox_alert_channel=@robloxAlertChannel,";
             command.Parameters.Add(robloxAlertChannel is 0
                 ? new NpgsqlParameter("robloxAlertChannel", NpgsqlDbType.Numeric) { Value = DBNull.Value }
                 : new NpgsqlParameter("robloxAlertChannel", NpgsqlDbType.Numeric) { Value = (long)robloxAlertChannel });
@@ -159,7 +152,7 @@ public static class Guilds
         
         if (robloxAlertEnabled is not null)
         {
-            query += " roblox_alert_enabled=@robloxAlertEnabled";
+            query += " roblox_alert_enabled=@robloxAlertEnabled,";
             command.Parameters.Add(new NpgsqlParameter("robloxAlertEnabled", NpgsqlDbType.Boolean)
                 { Value = robloxAlertEnabled });
         }
@@ -234,7 +227,6 @@ public static class Guilds
                 Id = (ulong)reader.GetInt64(reader.GetOrdinal("id")),
                 CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
                 Name = reader.GetString(reader.GetOrdinal("name")),
-                Tracked = reader.GetBoolean(reader.GetOrdinal("tracked")),
                 TempVcChannel = tempVcChannel,
                 TempVcEnabled = reader.GetBoolean(reader.GetOrdinal("temp_vc_enabled")),
                 TempVcDefaultMemberLimit = reader.GetInt16(reader.GetOrdinal("temp_vc_default_member_limit")),
