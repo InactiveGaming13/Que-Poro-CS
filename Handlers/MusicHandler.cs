@@ -263,28 +263,58 @@ public class MusicCommands : ApplicationCommandsModule
             return;
         }
 
-        LavalinkExtension lavalink = e.Client.GetLavalink();
-        LavalinkGuildPlayer? guildPlayer = lavalink.GetGuildPlayer(e.Guild);
-
-        if (guildPlayer == null)
+        if (!VoiceHandler.UsingLavaLink)
         {
-            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent("I am not in a voice channel."));
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                "I am not configured for voice at the moment."));
             return;
         }
+
+        if (!await VoiceHandler.ConnectToLavaLink(e.Client, e.Guild))
+        {
+            DiscordUser owner =
+                await e.Client.GetUserAsync(Convert.ToUInt64(Environment.GetEnvironmentVariable("BOT_OWNER_ID")));
+            await owner.SendMessageAsync("LavaLink has failed to connect (play command)!");
+            
+            await e.EditResponseAsync(
+                new DiscordWebhookBuilder().WithContent("I am unable to connect. I have reported this to my owner."));
+            return;
+        }
+
+        if (!await Users.UserExists(e.UserId))
+            await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName);
+        UserRow user = await Users.GetUser(e.UserId);
+
+        if (!await CheckGuildPlayer(VoiceHandler.Lavalink.GetGuildPlayer(e.Guild), e.Guild, e.Member.VoiceState.Channel))
+        {
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                "I am not configured for voice at the moment."));
+            return;
+        }
+        
+        LavalinkGuildPlayer guildPlayer = VoiceHandler.Lavalink.GetGuildPlayer(e.Guild)!;
         
         if (guildPlayer.CurrentTrack == null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Nothing is currently playing."));
             return;
         }
-
-        if (!guildPlayer.Player.Paused)
-        {
-            await e.EditResponseAsync($"Currently playing [{guildPlayer.CurrentTrack.Info.Title}]({guildPlayer.CurrentTrack.Info.Uri}) by {guildPlayer.CurrentTrack.Info.Author}.");
-            return;
-        }
         
-        await e.EditResponseAsync($"Currently paused [{guildPlayer.CurrentTrack.Info.Title}]({guildPlayer.CurrentTrack.Info.Uri}) by {guildPlayer.CurrentTrack.Info.Author}.");
+        DiscordColor color = DiscordColor.Blue;
+        if (guildPlayer.CurrentTrack.Info.Uri.ToString().StartsWith("https://open.spotify.com"))
+            color = DiscordColor.Green;
+            
+        if (guildPlayer.CurrentTrack.Info.Uri.ToString().StartsWith("https://youtube.com") ||
+            guildPlayer.CurrentTrack.Info.Uri.ToString().StartsWith("https://youtu.be"))
+            color = DiscordColor.Red;
+            
+        DiscordEmbed embed = new DiscordEmbedBuilder()
+        {
+            Color = color,
+            Title = $"Currently {(guildPlayer.Player.Paused ? "Paused" : "Playing")} in #{guildPlayer.Channel.Name}",
+            Description = $"[{guildPlayer.CurrentTrack.Info.Title}]({guildPlayer.CurrentTrack.Info.Uri}) by {guildPlayer.CurrentTrack.Info.Author}"
+        }.Build();
+        await e.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embed));
     }
 
     [SlashCommandGroup("queue", "The queue commands")]

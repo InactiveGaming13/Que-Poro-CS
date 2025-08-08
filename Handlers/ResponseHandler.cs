@@ -118,7 +118,7 @@ public class ResponseCommands : ApplicationCommandsModule
                     return;
                 }
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                    $"Added global response to {(exact ? "exact" : "")} trigger `{message}` with media alias `{mediaAlias}`."));
+                    $"Added global response to {(exact ? "exact" : "")} trigger **{message}** with media alias **{mediaAlias}**."));
                 return;
 
             case null when mediaCategory is not null && databaseUser is { Admin: true }:
@@ -129,7 +129,7 @@ public class ResponseCommands : ApplicationCommandsModule
                     return;
                 }
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                    $"Added global response to {(exact ? "exact" : "")} trigger `{message}` with media category `{mediaCategory}`."));
+                    $"Added global response to {(exact ? "exact" : "")} trigger **{message}** with media category **{mediaCategory}**."));
                 return;
 
             case null when databaseUser is { Admin: false }:
@@ -348,7 +348,7 @@ public class ResponseCommands : ApplicationCommandsModule
         DiscordEmbed embedBuilder = new DiscordEmbedBuilder
         {
             Color = DiscordColor.Blue,
-            Title = $"Response types for Que Poro Responses",
+            Title = "Response types for Que Poro Responses",
             Description = content
         }.Build();
         await e.EditResponseAsync(new DiscordWebhookBuilder().AddEmbed(embedBuilder));

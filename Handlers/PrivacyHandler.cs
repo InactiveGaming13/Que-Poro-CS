@@ -31,7 +31,7 @@ public class PrivacyCommands : ApplicationCommandsModule
             bool tracked = true)
         {
             await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
-            if (e.Member?.VoiceState is null || e.Guild is null)
+            if (e.Guild is null)
             {
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                     "I do not work in DMs."));
@@ -76,7 +76,7 @@ public class PrivacyCommands : ApplicationCommandsModule
             bool tracked = true)
         {
             await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
-            if (e.Member?.VoiceState is null || e.Guild is null)
+            if (e.Guild is null)
             {
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                     "I do not work in DMs."));
@@ -132,7 +132,7 @@ public class PrivacyCommands : ApplicationCommandsModule
             bool tracked = true)
         {
             await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
-            if (e.Member?.VoiceState is null || e.Guild is null)
+            if (e.Guild is null)
             {
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                     "I do not work in DMs."));
