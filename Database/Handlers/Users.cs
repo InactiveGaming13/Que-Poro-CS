@@ -100,7 +100,7 @@ public static class Users
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
             
-        string query = "UPDATE guilds SET";
+        string query = "UPDATE users SET";
 
         if (username != null)
         {
@@ -108,14 +108,14 @@ public static class Users
             command.Parameters.Add(new NpgsqlParameter("username", NpgsqlDbType.Text) { Value = username });
         }
 
-        query += " global_name=@globalName";
+        query += " global_name=@globalName,";
         command.Parameters.Add(globalName is null
         ? new NpgsqlParameter("globalName", NpgsqlDbType.Text) { Value = DBNull.Value }
         : new NpgsqlParameter("globalName", NpgsqlDbType.Text) { Value = globalName }); 
 
         if (admin is not null)
         {
-            query += " admin=@admin";
+            query += " admin=@admin,";
             command.Parameters.Add(new NpgsqlParameter("admin", NpgsqlDbType.Boolean) { Value = admin });
         }
 
@@ -154,13 +154,14 @@ public static class Users
         try
         {
             await command.ExecuteNonQueryAsync();
-            return true;
         }
         catch (Exception e)
         {
             Console.WriteLine(e);
             return false;
         }
+        
+        return true;
     }
 
     /// <summary>

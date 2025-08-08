@@ -15,11 +15,11 @@ namespace QuePoro.Handlers;
 public class ConfigCommands : ApplicationCommandsModule
 {
     /// <summary>
-    /// Sets whether the bot Responds to a User.
+    /// Sets whether I Responds to a User.
     /// </summary>
     /// <param name="e">The Interaction arguments.</param>
     /// <param name="respond">Whether to Respond.</param>
-    [SlashCommand("response", "Sets weather or not the bot responds to you")]
+    [SlashCommand("response", "Sets weather or not I responds to you")]
     public async Task Response(InteractionContext e, 
         [Option("value", "True for response, false for silence")] bool respond = false)
     {
@@ -38,22 +38,22 @@ public class ConfigCommands : ApplicationCommandsModule
         if (respond.Equals(user.RepliedTo))
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                $"The bot already {(respond ? "responds" : "doesn't respond")} to you."));
+                $"I already {(respond ? "responds" : "doesn't respond")} to you."));
             return;
         }
 
         await Users.ModifyUser(e.UserId, e.User.GlobalName, repliedTo: respond);
         
         await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-            $"The bot will {(respond ? "now" : "no longer")} respond to your messages."));
+            $"I will {(respond ? "now" : "no longer")} respond to your messages."));
     }
     
     /// <summary>
-    /// Sets whether the bot Reacts to a User.
+    /// Sets whether I Reacts to a User.
     /// </summary>
     /// <param name="e">The Interaction arguments.</param>
     /// <param name="react">Whether to React.</param>
-    [SlashCommand("react", "Sets weather or not the bot replies to you")]
+    [SlashCommand("react", "Sets weather or not I replies to you")]
     public async Task React(InteractionContext e, 
         [Option("value", "True for reaction, false for zilch")] bool react = false)
     {
@@ -72,13 +72,13 @@ public class ConfigCommands : ApplicationCommandsModule
         if (react.Equals(user.ReactedTo))
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                $"The bot already {(react ? "reacts" : "doesn't react")} to you."));
+                $"I already {(react ? "reacts" : "doesn't react")} to you."));
             return;
         }
 
         await Users.ModifyUser(e.UserId, e.User.GlobalName, reactedTo: react);
         
         await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                $"The bot will {(react ? "now" : "no longer")} react to your messages."));
+                $"I will {(react ? "now" : "no longer")} react to your messages."));
     }
 }
