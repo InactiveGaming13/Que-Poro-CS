@@ -55,7 +55,7 @@ public class ConfigCommands : ApplicationCommandsModule
     /// <param name="react">Whether to React.</param>
     [SlashCommand("react", "Sets weather or not the bot replies to you")]
     public async Task React(InteractionContext e, 
-        [Option("value", "True for response, false for silence")] bool react = false)
+        [Option("value", "True for reaction, false for zilch")] bool react = false)
     {
         await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
         if (e.Member is null || e.Guild is null)
