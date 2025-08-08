@@ -5,7 +5,6 @@ public class GuildRow
     public required ulong Id { get; set; }
     public required DateTime CreatedAt { get; set; }
     public required string Name { get; set; }
-    public required bool Tracked { get; set; }
     public ulong? TempVcChannel { get; set; }
     public required bool TempVcEnabled { get; set; }
     public required int TempVcDefaultMemberLimit { get; set; }

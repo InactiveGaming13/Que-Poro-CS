@@ -18,7 +18,6 @@ CREATE TABLE IF NOT EXISTS guilds
     id                           NUMERIC PRIMARY KEY NOT NULL,
     created_at                   TIMESTAMP           NOT NULL,
     name                         TEXT                NOT NULL,
-    tracked                      BOOLEAN             NOT NULL DEFAULT TRUE,
     temp_vc_channel              NUMERIC,
     temp_vc_enabled              BOOLEAN             NOT NULL DEFAULT TRUE,
     temp_vc_default_member_limit INTEGER             NOT NULL DEFAULT 5,
@@ -33,7 +32,6 @@ CREATE TABLE IF NOT EXISTS channels
     id         NUMERIC PRIMARY KEY NOT NULL,
     created_at TIMESTAMP           NOT NULL,
     name       TEXT                NOT NULL,
-    tracked    BOOLEAN             NOT NULL DEFAULT TRUE,
     guild_id   NUMERIC             NOT NULL
         CONSTRAINT channels_guild_id_fk
             REFERENCES guilds,
@@ -49,7 +47,6 @@ CREATE TABLE IF NOT EXISTS users
     admin       BOOLEAN             NOT NULL DEFAULT FALSE,
     replied_to  BOOLEAN             NOT NULL DEFAULT TRUE,
     reacted_to  BOOLEAN             NOT NULL DEFAULT TRUE,
-    tracked     BOOLEAN             NOT NULL DEFAULT TRUE,
     banned      BOOLEAN             NOT NULL DEFAULT FALSE
 );
 
@@ -66,10 +63,8 @@ CREATE TABLE IF NOT EXISTS user_stats
     channel_id      NUMERIC   NOT NULL
         CONSTRAINT user_stats_channel_id_fk
             REFERENCES channels,
+    tracked         BOOLEAN   NOT NULL DEFAULT TRUE,
     sent            INTEGER   NOT NULL DEFAULT 0,
-    deleted         INTEGER   NOT NULL DEFAULT 0,
-    edited          INTEGER   NOT NULL DEFAULT 0,
-    replies         INTEGER   NOT NULL DEFAULT 0,
     temp_vc_created INTEGER   NOT NULL DEFAULT 0,
     mod_actions     INTEGER   NOT NULL DEFAULT 0,
     strikes         INTEGER   NOT NULL DEFAULT 0

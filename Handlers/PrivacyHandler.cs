@@ -40,16 +40,8 @@ public class PrivacyCommands : ApplicationCommandsModule
             
             if (!await Users.UserExists(e.UserId))
                 await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName);
-            UserRow user = await Users.GetUser(e.UserId);
 
-            if (tracked.Equals(user.Tracked))
-            {
-                await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                    $"I already {(tracked ? "tracks" : "doesn't track")} your message count."));
-                return;
-            }
-
-            if (!await Users.ModifyUser(e.UserId, e.User.GlobalName, tracked: tracked))
+            if (!await UserStats.SetStatTracked(tracked, userId: e.UserId))
             {
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                     "An unexpected database error occured."));
@@ -57,7 +49,7 @@ public class PrivacyCommands : ApplicationCommandsModule
             }
         
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                $"I will {(tracked ? "now" : "no longer")} track your message count."));
+                $"I will {(tracked ? "now" : "no longer")} track your messages."));
         }
     }
 
@@ -92,7 +84,7 @@ public class PrivacyCommands : ApplicationCommandsModule
                 await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName);
             UserRow user = await Users.GetUser(e.UserId);
 
-            if (user is { Admin: false } && !e.Member.Permissions.HasPermission(Permissions.Administrator))
+            if (user is { Admin: false } && !e.Member!.Permissions.HasPermission(Permissions.Administrator))
             {
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                     "You are not an admin."));
@@ -104,16 +96,13 @@ public class PrivacyCommands : ApplicationCommandsModule
 
             if (!await Channels.ChannelExists(channel.Id))
                 await Channels.AddChannel(channel.Id, e.Guild.Id, channel.Name, channel.Topic);
-            ChannelRow databaseChannel = await Channels.GetChannel(channel.Id);
 
-            if (tracked.Equals(databaseChannel.Tracked))
+            if (!await UserStats.SetStatTracked(tracked, channelId: channel.Id))
             {
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                    $"I already {(tracked ? "tracks" : "doesn't track")} {channel.Mention}."));
+                    "An unexpected database error occured."));
                 return;
             }
-
-            await Channels.ModifyChannel(channel.Id, tracked: tracked);
         
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 $"I will {(tracked ? "now" : "no longer")} track {channel.Mention}."));
@@ -148,7 +137,7 @@ public class PrivacyCommands : ApplicationCommandsModule
                 await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName);
             UserRow user = await Users.GetUser(e.UserId);
             
-            if (user is { Admin: false } && !e.Member.Permissions.HasPermission(Permissions.Administrator))
+            if (user is { Admin: false } && !e.Member!.Permissions.HasPermission(Permissions.Administrator))
             {
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                     "You are not an admin."));
@@ -157,16 +146,13 @@ public class PrivacyCommands : ApplicationCommandsModule
 
             if (!await Guilds.GuildExists(e.Guild.Id))
                 await Guilds.AddGuild(e.Guild.Id, e.Guild.Name);
-            GuildRow guild = await Guilds.GetGuild(e.Guild.Id);
 
-            if (tracked.Equals(guild.Tracked))
+            if (!await UserStats.SetStatTracked(tracked, guildId: e.GuildId))
             {
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                    $"I already {(tracked ? "tracks" : "doesn't track")} **{e.Guild.Name}**."));
+                    "An unexpected database error occured."));
                 return;
             }
-
-            await Guilds.ModifyGuild(e.Guild.Id, tracked: tracked);
         
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 $"I will {(tracked ? "now" : "no longer")} track **{e.Guild.Name}**."));
