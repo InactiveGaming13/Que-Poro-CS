@@ -14,11 +14,10 @@ public static class Users
     /// <param name="globalName">The global name of the User.</param>
     /// <param name="admin">Whether to make the User an administrator.</param>
     /// <param name="repliedTo">Whether to reply to the User.</param>
-    /// <param name="tracked">Whether to track to the User.</param>
     /// <param name="banned">Whether to ban to the User.</param>
     /// <returns>Whether the operation succeeds.</returns>
     public static async Task<bool> AddUser(ulong userId, string username, string? globalName, bool admin = false,
-        bool repliedTo = true, bool tracked = true, bool banned = false)
+        bool repliedTo = true, bool banned = false)
     {
         if ((long)userId == Convert.ToInt64(Environment.GetEnvironmentVariable("BOT_OWNER_ID")))
             admin = true;
@@ -26,8 +25,8 @@ public static class Users
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
         const string query = 
-            "INSERT INTO users (id, created_at, username, global_name, admin, replied_to, tracked, banned) " +
-            "VALUES (@id, CURRENT_TIMESTAMP, @username, @globalName, @admin, @repliedTo, @tracked, @banned)";
+            "INSERT INTO users (id, created_at, username, global_name, admin, replied_to, banned) " +
+            "VALUES (@id, CURRENT_TIMESTAMP, @username, @globalName, @admin, @repliedTo, @banned)";
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)userId });
@@ -37,7 +36,6 @@ public static class Users
         : new NpgsqlParameter("globalName", NpgsqlDbType.Text) { Value = globalName });
         command.Parameters.Add(new NpgsqlParameter("admin", NpgsqlDbType.Boolean) { Value = admin });
         command.Parameters.Add(new NpgsqlParameter("repliedTo", NpgsqlDbType.Boolean) { Value = repliedTo });
-        command.Parameters.Add(new NpgsqlParameter("tracked", NpgsqlDbType.Boolean) { Value = tracked });
         command.Parameters.Add(new NpgsqlParameter("banned", NpgsqlDbType.Boolean) { Value = banned });
 
         try
@@ -202,7 +200,6 @@ public static class Users
                 Admin = reader.GetBoolean(reader.GetOrdinal("admin")),
                 RepliedTo = reader.GetBoolean(reader.GetOrdinal("replied_to")),
                 ReactedTo = reader.GetBoolean(reader.GetOrdinal("reacted_to")),
-                Tracked = reader.GetBoolean(reader.GetOrdinal("tracked")),
                 Banned = reader.GetBoolean(reader.GetOrdinal("banned"))
             };
         }
