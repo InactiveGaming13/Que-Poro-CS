@@ -13,11 +13,10 @@ public static class Channels
     /// <param name="guildId">The ID of the Guild.</param>
     /// <param name="name">The name of the Channel.</param>
     /// <param name="topic">The topic of the Channel.</param>
-    /// <param name="tracked">Whether the Channel is tracked.</param>
     /// <param name="messages">The number of messages in the channel.</param>
     /// <returns>Whether the operation succeeds.</returns>
-    public static async Task<bool> AddChannel(ulong id, ulong guildId, string name, string? topic = null,
-        bool tracked = true, int messages = 0)
+    public static async Task<bool> AddChannel(ulong id, ulong guildId, string name, string? topic = null, 
+        int messages = 0)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
@@ -80,10 +79,9 @@ public static class Channels
     /// <param name="id">The ID of the Channel.</param>
     /// <param name="name">The name of the Channel.</param>
     /// <param name="topic">The topic of the Channel.</param>
-    /// <param name="tracked">Whether the Channel is tracked.</param>
     /// <returns>Whether the operation succeeds.</returns>
     public static async Task<bool> ModifyChannel(ulong id, string? name = null,
-        string? topic = null, bool? tracked = null)
+        string? topic = null)
     {
         if (name == null && topic == null)
             return false;
