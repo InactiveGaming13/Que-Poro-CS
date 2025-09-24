@@ -79,8 +79,6 @@ public static class UserStats
                 UserId = (ulong)reader.GetInt64(reader.GetOrdinal("id")),
                 Tracked = reader.GetBoolean(reader.GetOrdinal("tracked")),
                 SentMessages = reader.GetInt32(reader.GetOrdinal("sent")),
-                DeletedMessages = reader.GetInt32(reader.GetOrdinal("deleted")),
-                EditedMessages = reader.GetInt32(reader.GetOrdinal("edited")),
                 TempVcsCreated = reader.GetInt32(reader.GetOrdinal("temp_vc_created")),
                 ModeratorActions = reader.GetInt32(reader.GetOrdinal("mod_actions")),
                 ModeratorStrikes = reader.GetInt32(reader.GetOrdinal("strikes"))
@@ -116,8 +114,6 @@ public static class UserStats
                 UserId = (ulong)reader.GetInt64(reader.GetOrdinal("id")),
                 Tracked = reader.GetBoolean(reader.GetOrdinal("tracked")),
                 SentMessages = reader.GetInt32(reader.GetOrdinal("sent")),
-                DeletedMessages = reader.GetInt32(reader.GetOrdinal("deleted")),
-                EditedMessages = reader.GetInt32(reader.GetOrdinal("edited")),
                 TempVcsCreated = reader.GetInt32(reader.GetOrdinal("temp_vc_created")),
                 ModeratorActions = reader.GetInt32(reader.GetOrdinal("mod_actions")),
                 ModeratorStrikes = reader.GetInt32(reader.GetOrdinal("strikes"))
@@ -176,8 +172,6 @@ public static class UserStats
                 UserId = (ulong)reader.GetInt64(reader.GetOrdinal("id")),
                 Tracked = reader.GetBoolean(reader.GetOrdinal("tracked")),
                 SentMessages = reader.GetInt32(reader.GetOrdinal("sent")),
-                DeletedMessages = reader.GetInt32(reader.GetOrdinal("deleted")),
-                EditedMessages = reader.GetInt32(reader.GetOrdinal("edited")),
                 TempVcsCreated = reader.GetInt32(reader.GetOrdinal("temp_vc_created")),
                 ModeratorActions = reader.GetInt32(reader.GetOrdinal("mod_actions")),
                 ModeratorStrikes = reader.GetInt32(reader.GetOrdinal("strikes"))
