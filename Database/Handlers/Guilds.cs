@@ -11,14 +11,13 @@ public static class Guilds
     /// </summary>
     /// <param name="id">The ID of the Guild.</param>
     /// <param name="name">The name of the Guild.</param>
-    /// <param name="tracked"></param>
     /// <param name="tempVcChannel"></param>
     /// <param name="tempVcDefaultMemberLimit"></param>
     /// <param name="tempVcDefaultBitrate"></param>
     /// <param name="robloxAlertChannel"></param>
     /// <param name="robloxAlertInterval"></param>
     /// <returns>Whether the operation succeeds.</returns>
-    public static async Task<bool> AddGuild(ulong id, string name, bool tracked = true, ulong tempVcChannel = 0,
+    public static async Task<bool> AddGuild(ulong id, string name, ulong tempVcChannel = 0,
         int tempVcDefaultMemberLimit = 5, int tempVcDefaultBitrate = 64, ulong robloxAlertChannel = 0,
         int robloxAlertInterval = 60)
     {
@@ -26,15 +25,14 @@ public static class Guilds
         await using NpgsqlCommand command = connection.CreateCommand();
         
         const string query = 
-            "INSERT INTO guilds (id, created_at, name, tracked, temp_vc_channel, temp_vc_default_member_limit," +
+            "INSERT INTO guilds (id, created_at, name, temp_vc_channel, temp_vc_default_member_limit," +
             "temp_vc_default_bitrate, roblox_alert_channel, roblox_alert_interval) VALUES (@id, CURRENT_TIMESTAMP, " +
-            "@name, @tracked, @tempVcChannel, @tempVcDefaultMemberLimit, @tempVcDefaultBitrate, @robloxAlertChannel, " +
+            "@name, @tempVcChannel, @tempVcDefaultMemberLimit, @tempVcDefaultBitrate, @robloxAlertChannel, " +
             "@robloxAlertInterval)";
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
         command.Parameters.Add(new NpgsqlParameter("name", NpgsqlDbType.Text) { Value = name });
-        command.Parameters.Add(new NpgsqlParameter("tracked", NpgsqlDbType.Boolean) { Value = tracked });
         command.Parameters.Add(new NpgsqlParameter("tempVcChannel", NpgsqlDbType.Numeric) { Value = (long)tempVcChannel });
         command.Parameters.Add(new NpgsqlParameter("tempVcDefaultMemberLimit", NpgsqlDbType.Integer) { Value = tempVcDefaultMemberLimit });
         command.Parameters.Add(new NpgsqlParameter("tempVcDefaultBitrate", NpgsqlDbType.Integer) { Value = tempVcDefaultBitrate });
@@ -85,7 +83,6 @@ public static class Guilds
     /// </summary>
     /// <param name="id">The ID of the Guild.</param>
     /// <param name="name">The name of the Guild.</param>
-    /// <param name="tracked">Whether to track the Guild.</param>
     /// <param name="tempVcChannel">The Channel ID for creating Temporary VCs.</param>
     /// <param name="tempVcEnabled">Whether to handle Temporary VCs for the Guild.</param>
     /// <param name="tempVcDefaultMemberLimit">The default member limit for Temporary VCs.</param>
@@ -227,6 +224,7 @@ public static class Guilds
                 Id = (ulong)reader.GetInt64(reader.GetOrdinal("id")),
                 CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
                 Name = reader.GetString(reader.GetOrdinal("name")),
+                Tracked = reader.GetBoolean(reader.GetOrdinal("tracked")),
                 TempVcChannel = tempVcChannel,
                 TempVcEnabled = reader.GetBoolean(reader.GetOrdinal("temp_vc_enabled")),
                 TempVcDefaultMemberLimit = reader.GetInt16(reader.GetOrdinal("temp_vc_default_member_limit")),
@@ -238,6 +236,29 @@ public static class Guilds
         }
 
         throw new KeyNotFoundException($"No Guild exists with ID: {id}");
+    }
+    
+    public static async Task<bool> SetGuildTracked(ulong id, bool tracked)
+    {
+        await using NpgsqlConnection connection = await Database.GetConnection();
+        await using NpgsqlCommand command = connection.CreateCommand();
+        
+        const string query = "UPDATE guilds SET tracked=@tracked WHERE id=@id";
+
+        command.CommandText = query;
+        command.Parameters.Add(new NpgsqlParameter("tracked", NpgsqlDbType.Boolean) { Value = tracked });
+        command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
+        
+        try
+        {
+            await command.ExecuteNonQueryAsync();
+            return true;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            return false;
+        }
     }
     
     /// <summary>

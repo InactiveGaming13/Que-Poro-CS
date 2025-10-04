@@ -15,7 +15,7 @@ public static class Database
         string connectionString =
             $"Host={databaseHost};Port={databasePort};Username={databaseUser};Password={databasePass};Database={databaseDb}";
         
-        NpgsqlConnection connection = new NpgsqlConnection(connectionString);
+        NpgsqlConnection connection = new (connectionString);
         await connection.OpenAsync();
         return connection;
     }

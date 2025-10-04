@@ -13,11 +13,10 @@ public static class Channels
     /// <param name="guildId">The ID of the Guild.</param>
     /// <param name="name">The name of the Channel.</param>
     /// <param name="topic">The topic of the Channel.</param>
-    /// <param name="tracked">Whether the Channel is tracked.</param>
     /// <param name="messages">The number of messages in the channel.</param>
     /// <returns>Whether the operation succeeds.</returns>
-    public static async Task<bool> AddChannel(ulong id, ulong guildId, string name, string? topic = null,
-        bool tracked = true, int messages = 0)
+    public static async Task<bool> AddChannel(ulong id, ulong guildId, string name, string? topic = null, 
+        int messages = 0)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
@@ -80,10 +79,9 @@ public static class Channels
     /// <param name="id">The ID of the Channel.</param>
     /// <param name="name">The name of the Channel.</param>
     /// <param name="topic">The topic of the Channel.</param>
-    /// <param name="tracked">Whether the Channel is tracked.</param>
     /// <returns>Whether the operation succeeds.</returns>
     public static async Task<bool> ModifyChannel(ulong id, string? name = null,
-        string? topic = null, bool? tracked = null)
+        string? topic = null)
     {
         if (name == null && topic == null)
             return false;
@@ -161,6 +159,7 @@ public static class Channels
                     Id = (ulong)reader.GetInt64(reader.GetOrdinal("id")),
                     CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
                     Name = reader.GetString(reader.GetOrdinal("name")),
+                    Tracked = reader.GetBoolean(reader.GetOrdinal("tracked")),
                     GuildId = (ulong)reader.GetInt64(reader.GetOrdinal("guild_id")),
                     Description = description,
                 };
@@ -173,6 +172,29 @@ public static class Channels
         }
 
         throw new KeyNotFoundException($"No Channel exists with ID: {id}");
+    }
+    
+    public static async Task<bool> SetChannelTracked(ulong id, bool tracked)
+    {
+        await using NpgsqlConnection connection = await Database.GetConnection();
+        await using NpgsqlCommand command = connection.CreateCommand();
+        
+        const string query = "UPDATE channels SET tracked=@tracked WHERE id=@id";
+
+        command.CommandText = query;
+        command.Parameters.Add(new NpgsqlParameter("tracked", NpgsqlDbType.Boolean) { Value = tracked });
+        command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
+            
+        try
+        {
+            await command.ExecuteNonQueryAsync();
+            return true;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            return false;
+        }
     }
     
     /// <summary>
