@@ -12,28 +12,26 @@ public static class UserStats
     /// <param name="userId">The ID of the User to track.</param>
     /// <param name="channelId">The ID of the Channel to track.</param>
     /// <param name="guildId">The ID of the Guild to track.</param>
-    /// <param name="tracked">Whether the stat is tracked.</param>
     /// <param name="sent">The number of sent messages in a channel.</param>
     /// <param name="tempVcCreated">The number of Temporary VCs created.</param>
     /// <param name="modActions">The number of bot moderator actions against the User.</param>
     /// <param name="strikes">The number of strikes against the User.</param>
     /// <returns>Whether the operation succeeds.</returns>
-    public static async Task<bool> AddStat(ulong userId, ulong channelId, ulong guildId, int sent = 0, bool tracked = true,
+    public static async Task<bool> AddStat(ulong userId, ulong channelId, ulong guildId, int sent = 0,
         int tempVcCreated = 0, int modActions = 0, int strikes = 0)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
         
         const string query = 
-            "INSERT INTO user_stats (id, created_at, channel_id, guild_id, tracked, sent, temp_vc_created, " +
-            "mod_actions, strikes) VALUES (@id, CURRENT_TIMESTAMP, @channelId, @guildId, @tracked, @sent, " +
+            "INSERT INTO user_stats (id, created_at, channel_id, guild_id, sent, temp_vc_created, " +
+            "mod_actions, strikes) VALUES (@id, CURRENT_TIMESTAMP, @channelId, @guildId, @sent, " +
             "@tempVcCreated, @modActions, @strikes)";
         
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)userId });
         command.Parameters.Add(new NpgsqlParameter("channelId", NpgsqlDbType.Numeric) { Value = (long)channelId });
         command.Parameters.Add(new NpgsqlParameter("guildId", NpgsqlDbType.Numeric) { Value = (long)guildId });
-        command.Parameters.Add(new NpgsqlParameter("tracked", NpgsqlDbType.Boolean) { Value = tracked });
         command.Parameters.Add(new NpgsqlParameter("sent", NpgsqlDbType.Integer) { Value = sent });
         command.Parameters.Add(new NpgsqlParameter("tempVcCreated", NpgsqlDbType.Integer) { Value = tempVcCreated });
         command.Parameters.Add(new NpgsqlParameter("modActions", NpgsqlDbType.Integer) { Value = modActions });
@@ -77,7 +75,6 @@ public static class UserStats
             return new UserStatRow
             {
                 UserId = (ulong)reader.GetInt64(reader.GetOrdinal("id")),
-                Tracked = reader.GetBoolean(reader.GetOrdinal("tracked")),
                 SentMessages = reader.GetInt32(reader.GetOrdinal("sent")),
                 TempVcsCreated = reader.GetInt32(reader.GetOrdinal("temp_vc_created")),
                 ModeratorActions = reader.GetInt32(reader.GetOrdinal("mod_actions")),
@@ -112,7 +109,6 @@ public static class UserStats
             return new UserStatRow
             {
                 UserId = (ulong)reader.GetInt64(reader.GetOrdinal("id")),
-                Tracked = reader.GetBoolean(reader.GetOrdinal("tracked")),
                 SentMessages = reader.GetInt32(reader.GetOrdinal("sent")),
                 TempVcsCreated = reader.GetInt32(reader.GetOrdinal("temp_vc_created")),
                 ModeratorActions = reader.GetInt32(reader.GetOrdinal("mod_actions")),
@@ -170,7 +166,6 @@ public static class UserStats
             userStats.Add(new UserStatRow
             {
                 UserId = (ulong)reader.GetInt64(reader.GetOrdinal("id")),
-                Tracked = reader.GetBoolean(reader.GetOrdinal("tracked")),
                 SentMessages = reader.GetInt32(reader.GetOrdinal("sent")),
                 TempVcsCreated = reader.GetInt32(reader.GetOrdinal("temp_vc_created")),
                 ModeratorActions = reader.GetInt32(reader.GetOrdinal("mod_actions")),
@@ -187,28 +182,21 @@ public static class UserStats
     /// <param name="userId">The ID of the User to track.</param>
     /// <param name="channelId">The ID of the Channel to track.</param>
     /// <param name="guildId">The ID of the Guild to track.</param>
-    /// <param name="tracked">Whether the stat is tracked.</param>
     /// <param name="sent">The number of sent messages in a channel.</param>
     /// <param name="tempVcCreated">The number of Temporary VCs created.</param>
     /// <param name="modActions">The number of bot moderator actions against the User.</param>
     /// <param name="strikes">The number of strikes against the User.</param>
     /// <returns>Whether the operation succeeds.</returns>
-    public static async Task<bool> ModifyStat(ulong userId, ulong channelId, ulong guildId, bool? tracked = null,
-        int? sent = null, int? tempVcCreated = null, int? modActions = null, int? strikes = null)
+    public static async Task<bool> ModifyStat(ulong userId, ulong channelId, ulong guildId, int? sent = null,
+        int? tempVcCreated = null, int? modActions = null, int? strikes = null)
     {
-        if (tracked is null && sent is null && tempVcCreated is null && modActions is null && strikes is null)
+        if (sent is null && tempVcCreated is null && modActions is null && strikes is null)
             return false;
         
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
         
         string query = "UPDATE user_stats SET";
-
-        if (tracked is not null)
-        {
-            query += " tracked=@tracked";
-            command.Parameters.Add(new NpgsqlParameter("tracked", NpgsqlDbType.Boolean) { Value = tracked });
-        }
 
         if (sent is not null)
         {
@@ -256,56 +244,6 @@ public static class UserStats
         
         return true;
     }
-
-    public static async Task<bool> SetStatTracked(bool tracked = true, ulong? userId = null, ulong? channelId = null,
-        ulong? guildId = null)
-    {
-        if (userId is null && channelId is null && guildId is null)
-            return false;
-        
-        await using NpgsqlConnection connection = await Database.GetConnection();
-        await using NpgsqlCommand command = connection.CreateCommand();
-
-        string query = "UPDATE user_stats SET tracked=@tracked";
-        command.Parameters.AddWithValue(new NpgsqlParameter("tracked", NpgsqlDbType.Boolean) { Value = tracked });
-
-        if (!tracked)
-            query += ", sent=0";
-
-        query += " WHERE";
-
-        if (userId is not null)
-        {
-            query += " user_id=@userId,";
-            command.Parameters.Add(new NpgsqlParameter("userId", NpgsqlDbType.Numeric) { Value = (long)userId });
-        }
-        
-        if (channelId is not null)
-        {
-            query += " channel_id=@channelId,";
-            command.Parameters.Add(new NpgsqlParameter("channelId", NpgsqlDbType.Numeric) { Value = (long)channelId });
-        }
-        
-        if (guildId is not null)
-        {
-            query += " guild_id=@guildId";
-            command.Parameters.Add(new NpgsqlParameter("guildId", NpgsqlDbType.Numeric) { Value = (long)guildId });
-        }
-
-        command.CommandText = query;
-
-        try
-        {
-            await command.ExecuteNonQueryAsync();
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e);
-            return false;
-        }
-
-        return true;
-    }
     
     /// <summary>
     /// Checks if a User Statistic exists for a guild and channel.
@@ -328,5 +266,32 @@ public static class UserStats
         command.Parameters.Add(new NpgsqlParameter("guildId", NpgsqlDbType.Numeric) { Value = (long)guildId });
 
         return command.ExecuteScalar() is not null;
+    }
+    
+    public static async Task<bool> GuildChannelUserTracked(ulong guildId, ulong channelId, ulong userId)
+    {
+        await using NpgsqlConnection connection = await Database.GetConnection();
+        await using NpgsqlCommand command = connection.CreateCommand();
+        
+        const string query = 
+            "SELECT (g.tracked AND c.tracked AND u.tracked) AS can_track " +
+            "FROM guilds g JOIN channels c ON c.guild_id = g.id JOIN users u ON u.id = @userId " +
+            "WHERE g.id = @guildId AND c.id = @channelId";
+        
+        command.CommandText = query;
+        command.Parameters.Add(new NpgsqlParameter("userId", NpgsqlDbType.Numeric) { Value = (long)userId });
+        command.Parameters.Add(new NpgsqlParameter("channelId", NpgsqlDbType.Numeric) { Value = (long)channelId });
+        command.Parameters.Add(new NpgsqlParameter("guildId", NpgsqlDbType.Numeric) { Value = (long)guildId });
+
+        object? result = await command.ExecuteScalarAsync();
+        
+        // Safely convert to bool
+        if (result is null or DBNull)
+            return false;
+        
+        Console.WriteLine(result);
+        Console.WriteLine(Convert.ToBoolean(result));
+
+        return Convert.ToBoolean(result);
     }
 }

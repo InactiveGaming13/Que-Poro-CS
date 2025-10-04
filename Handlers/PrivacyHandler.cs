@@ -41,7 +41,7 @@ public class PrivacyCommands : ApplicationCommandsModule
             if (!await Users.UserExists(e.UserId))
                 await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName);
 
-            if (!await UserStats.SetStatTracked(tracked, userId: e.UserId))
+            if (!await Users.SetUserTracked(e.UserId, tracked))
             {
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                     "An unexpected database error occured."));
@@ -97,7 +97,7 @@ public class PrivacyCommands : ApplicationCommandsModule
             if (!await Channels.ChannelExists(channel.Id))
                 await Channels.AddChannel(channel.Id, e.Guild.Id, channel.Name, channel.Topic);
 
-            if (!await UserStats.SetStatTracked(tracked, channelId: channel.Id))
+            if (!await Channels.SetChannelTracked(channel.Id, tracked))
             {
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                     "An unexpected database error occured."));
@@ -147,7 +147,7 @@ public class PrivacyCommands : ApplicationCommandsModule
             if (!await Guilds.GuildExists(e.Guild.Id))
                 await Guilds.AddGuild(e.Guild.Id, e.Guild.Name);
 
-            if (!await UserStats.SetStatTracked(tracked, guildId: e.GuildId))
+            if (!await Guilds.SetGuildTracked(e.Guild.Id, tracked))
             {
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                     "An unexpected database error occured."));

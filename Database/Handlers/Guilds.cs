@@ -224,6 +224,7 @@ public static class Guilds
                 Id = (ulong)reader.GetInt64(reader.GetOrdinal("id")),
                 CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
                 Name = reader.GetString(reader.GetOrdinal("name")),
+                Tracked = reader.GetBoolean(reader.GetOrdinal("tracked")),
                 TempVcChannel = tempVcChannel,
                 TempVcEnabled = reader.GetBoolean(reader.GetOrdinal("temp_vc_enabled")),
                 TempVcDefaultMemberLimit = reader.GetInt16(reader.GetOrdinal("temp_vc_default_member_limit")),
@@ -235,6 +236,29 @@ public static class Guilds
         }
 
         throw new KeyNotFoundException($"No Guild exists with ID: {id}");
+    }
+    
+    public static async Task<bool> SetGuildTracked(ulong id, bool tracked)
+    {
+        await using NpgsqlConnection connection = await Database.GetConnection();
+        await using NpgsqlCommand command = connection.CreateCommand();
+        
+        const string query = "UPDATE guilds SET tracked=@tracked WHERE id=@id";
+
+        command.CommandText = query;
+        command.Parameters.Add(new NpgsqlParameter("tracked", NpgsqlDbType.Boolean) { Value = tracked });
+        command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
+        
+        try
+        {
+            await command.ExecuteNonQueryAsync();
+            return true;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            return false;
+        }
     }
     
     /// <summary>

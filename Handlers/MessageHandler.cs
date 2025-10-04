@@ -91,10 +91,13 @@ public static class MessageHandler
         // If the message starts with “@ignore”, ignore the message.
         if (e.Message.Content.StartsWith("@ignore", StringComparison.CurrentCultureIgnoreCase))
             return;
+
+        bool tracked = await UserStats.GuildChannelUserTracked(e.Guild.Id, e.Channel.Id, e.Author.Id);
+        Console.WriteLine(tracked);
         
         // If the User, Channel and Guild has tracking enabled, update the User Stats.
-        if (userStats is { Tracked: true })
-            await UserStats.ModifyStat(e.Author.Id, e.Channel.Id, e.Guild.Id, sent: userStats.SentMessages ++);
+        if (tracked)
+            await UserStats.ModifyStat(e.Author.Id, e.Channel.Id, e.Guild.Id, sent: userStats.SentMessages + 1);
 
         string? delete = await BannedPhraseHandler.HandleBannedPhrases(e.Message.Content);
         if (delete is not null)

@@ -197,6 +197,7 @@ public static class Users
                 CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
                 Username = reader.GetString(reader.GetOrdinal("username")),
                 GlobalName = globalName,
+                Tracked = reader.GetBoolean(reader.GetOrdinal("tracked")),
                 Admin = reader.GetBoolean(reader.GetOrdinal("admin")),
                 RepliedTo = reader.GetBoolean(reader.GetOrdinal("replied_to")),
                 ReactedTo = reader.GetBoolean(reader.GetOrdinal("reacted_to")),
@@ -205,6 +206,29 @@ public static class Users
         }
 
         throw new KeyNotFoundException($"No User exists with ID: {id}");
+    }
+    
+    public static async Task<bool> SetUserTracked(ulong id, bool tracked)
+    {
+        await using NpgsqlConnection connection = await Database.GetConnection();
+        await using NpgsqlCommand command = connection.CreateCommand();
+        
+        const string query = "UPDATE users SET tracked=@tracked WHERE id=@id";
+
+        command.CommandText = query;
+        command.Parameters.Add(new NpgsqlParameter("tracked", NpgsqlDbType.Boolean) { Value = tracked });
+        command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
+        
+        try
+        {
+            await command.ExecuteNonQueryAsync();
+            return true;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            return false;
+        }
     }
     
     /// <summary>

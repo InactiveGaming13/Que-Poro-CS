@@ -3,7 +3,6 @@
 public class UserStatRow
 {
     public required ulong UserId { get; set; }
-    public required bool Tracked { get; set; }
     public required int SentMessages { get; set; }
     public required int TempVcsCreated { get; set; }
     public required int ModeratorActions { get; set; }

@@ -159,6 +159,7 @@ public static class Channels
                     Id = (ulong)reader.GetInt64(reader.GetOrdinal("id")),
                     CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
                     Name = reader.GetString(reader.GetOrdinal("name")),
+                    Tracked = reader.GetBoolean(reader.GetOrdinal("tracked")),
                     GuildId = (ulong)reader.GetInt64(reader.GetOrdinal("guild_id")),
                     Description = description,
                 };
@@ -171,6 +172,29 @@ public static class Channels
         }
 
         throw new KeyNotFoundException($"No Channel exists with ID: {id}");
+    }
+    
+    public static async Task<bool> SetChannelTracked(ulong id, bool tracked)
+    {
+        await using NpgsqlConnection connection = await Database.GetConnection();
+        await using NpgsqlCommand command = connection.CreateCommand();
+        
+        const string query = "UPDATE channels SET tracked=@tracked WHERE id=@id";
+
+        command.CommandText = query;
+        command.Parameters.Add(new NpgsqlParameter("tracked", NpgsqlDbType.Boolean) { Value = tracked });
+        command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
+            
+        try
+        {
+            await command.ExecuteNonQueryAsync();
+            return true;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            return false;
+        }
     }
     
     /// <summary>
