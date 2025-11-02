@@ -326,7 +326,7 @@ public static class CreateAVcHandler
             Console.WriteLine("User is not in a VC.");
             return null;
         }
-
+        
         GuildRow? databaseGuild = await Guilds.GetGuild(e.Guild.Id);
 
         if (databaseGuild is null && await Guilds.AddGuild(e.Guild.Id, e.Guild.Name))
