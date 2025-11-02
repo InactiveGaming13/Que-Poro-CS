@@ -12,7 +12,6 @@ public static class UserStats
     /// <param name="userId">The ID of the User to track.</param>
     /// <param name="channelId">The ID of the Channel to track.</param>
     /// <param name="guildId">The ID of the Guild to track.</param>
-    /// <param name="tracked">Whether the stat is tracked.</param>
     /// <param name="sent">The number of sent messages in a channel.</param>
     /// <param name="tempVcCreated">The number of Temporary VCs created.</param>
     /// <param name="modActions">The number of bot moderator actions against the User.</param>
@@ -77,10 +76,7 @@ public static class UserStats
             return new UserStatRow
             {
                 UserId = (ulong)reader.GetInt64(reader.GetOrdinal("id")),
-                Tracked = reader.GetBoolean(reader.GetOrdinal("tracked")),
                 SentMessages = reader.GetInt32(reader.GetOrdinal("sent")),
-                DeletedMessages = reader.GetInt32(reader.GetOrdinal("deleted")),
-                EditedMessages = reader.GetInt32(reader.GetOrdinal("edited")),
                 TempVcsCreated = reader.GetInt32(reader.GetOrdinal("temp_vc_created")),
                 ModeratorActions = reader.GetInt32(reader.GetOrdinal("mod_actions")),
                 ModeratorStrikes = reader.GetInt32(reader.GetOrdinal("strikes"))
@@ -114,10 +110,7 @@ public static class UserStats
             return new UserStatRow
             {
                 UserId = (ulong)reader.GetInt64(reader.GetOrdinal("id")),
-                Tracked = reader.GetBoolean(reader.GetOrdinal("tracked")),
                 SentMessages = reader.GetInt32(reader.GetOrdinal("sent")),
-                DeletedMessages = reader.GetInt32(reader.GetOrdinal("deleted")),
-                EditedMessages = reader.GetInt32(reader.GetOrdinal("edited")),
                 TempVcsCreated = reader.GetInt32(reader.GetOrdinal("temp_vc_created")),
                 ModeratorActions = reader.GetInt32(reader.GetOrdinal("mod_actions")),
                 ModeratorStrikes = reader.GetInt32(reader.GetOrdinal("strikes"))
@@ -174,10 +167,7 @@ public static class UserStats
             userStats.Add(new UserStatRow
             {
                 UserId = (ulong)reader.GetInt64(reader.GetOrdinal("id")),
-                Tracked = reader.GetBoolean(reader.GetOrdinal("tracked")),
                 SentMessages = reader.GetInt32(reader.GetOrdinal("sent")),
-                DeletedMessages = reader.GetInt32(reader.GetOrdinal("deleted")),
-                EditedMessages = reader.GetInt32(reader.GetOrdinal("edited")),
                 TempVcsCreated = reader.GetInt32(reader.GetOrdinal("temp_vc_created")),
                 ModeratorActions = reader.GetInt32(reader.GetOrdinal("mod_actions")),
                 ModeratorStrikes = reader.GetInt32(reader.GetOrdinal("strikes"))
@@ -193,7 +183,6 @@ public static class UserStats
     /// <param name="userId">The ID of the User to track.</param>
     /// <param name="channelId">The ID of the Channel to track.</param>
     /// <param name="guildId">The ID of the Guild to track.</param>
-    /// <param name="tracked">Whether the stat is tracked.</param>
     /// <param name="sent">The number of sent messages in a channel.</param>
     /// <param name="tempVcCreated">The number of Temporary VCs created.</param>
     /// <param name="modActions">The number of bot moderator actions against the User.</param>

@@ -93,8 +93,8 @@ public static class MessageHandler
             return;
         
         // If the User, Channel and Guild has tracking enabled, update the User Stats.
-        if (userStats is { Tracked: true })
-            await UserStats.ModifyStat(e.Author.Id, e.Channel.Id, e.Guild.Id, sent: userStats.SentMessages ++);
+        /*if (userStats is { Tracked: true })
+            await UserStats.ModifyStat(e.Author.Id, e.Channel.Id, e.Guild.Id, sent: userStats.SentMessages ++);*/
 
         string? delete = await BannedPhraseHandler.HandleBannedPhrases(e.Message.Content);
         if (delete is not null)
