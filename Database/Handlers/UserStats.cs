@@ -284,14 +284,8 @@ public static class UserStats
         command.Parameters.Add(new NpgsqlParameter("guildId", NpgsqlDbType.Numeric) { Value = (long)guildId });
 
         object? result = await command.ExecuteScalarAsync();
-        
-        // Safely convert to bool
-        if (result is null or DBNull)
-            return false;
-        
-        Console.WriteLine(result);
-        Console.WriteLine(Convert.ToBoolean(result));
 
-        return Convert.ToBoolean(result);
+        // Safely convert to bool
+        return result is not (null or DBNull) && Convert.ToBoolean(result);
     }
 }
