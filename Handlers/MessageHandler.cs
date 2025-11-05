@@ -93,7 +93,6 @@ public static class MessageHandler
             return;
 
         bool tracked = await UserStats.GuildChannelUserTracked(e.Guild.Id, e.Channel.Id, e.Author.Id);
-        Console.WriteLine(tracked);
         
         // If the User, Channel and Guild has tracking enabled, update the User Stats.
         if (tracked)
