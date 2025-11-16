@@ -69,34 +69,41 @@ public static class MessageHandler
     /// <param name="e">The Interaction arguments.</param>
     public static async Task MessageCreated(DiscordClient client, MessageCreateEventArgs e)
     {
+        DiscordGuild? guild = e.Guild ?? e.Message.Guild;
         // Check if the Guild is null.
-        if (e.Guild is null)
+        if (guild is null)
             return;
         
         // Check if the database contains the Guild, Channel, User and User Stats and add them if it doesn't.
-        if (!await Guilds.GuildExists(e.Guild.Id))
-            await Guilds.AddGuild(e.Guild.Id, e.Guild.Name);
+        if (!await Guilds.GuildExists(guild.Id))
+            await Guilds.AddGuild(guild.Id, guild.Name);
+
+        GuildRow tempGuild = await Guilds.GetGuild(guild.Id);
+        if (!tempGuild.Name.Equals(guild.Name))
+            await Guilds.ModifyGuild(guild.Id, guild.Name);
         
         if (!await Channels.ChannelExists(e.Channel.Id))
-            await Channels.AddChannel(e.Channel.Id, e.Guild.Id, e.Channel.Name, e.Channel.Topic);
+            await Channels.AddChannel(e.Channel.Id, guild.Id, e.Channel.Name, e.Channel.Topic);
+
+        await Channels.ModifyChannel(e.Channel.Id, e.Channel.Name, e.Channel.Topic);
         
         if (!await Users.UserExists(e.Author.Id))
             await Users.AddUser(e.Author.Id, e.Author.Username, e.Author.GlobalName);
         UserRow user = await Users.GetUser(e.Author.Id);
         
-        if (!await UserStats.StatExists(e.Author.Id, e.Channel.Id, e.Guild.Id))
-            await UserStats.AddStat(e.Author.Id, e.Channel.Id, e.Guild.Id);
-        UserStatRow userStats = await UserStats.GetUserStat(e.Author.Id, e.Channel.Id, e.Guild.Id);
+        if (!await UserStats.StatExists(e.Author.Id, e.Channel.Id, guild.Id))
+            await UserStats.AddStat(e.Author.Id, e.Channel.Id, guild.Id);
+        UserStatRow userStats = await UserStats.GetUserStat(e.Author.Id, e.Channel.Id, guild.Id);
         
         // If the message starts with “@ignore”, ignore the message.
         if (e.Message.Content.StartsWith("@ignore", StringComparison.CurrentCultureIgnoreCase))
             return;
 
-        bool tracked = await UserStats.GuildChannelUserTracked(e.Guild.Id, e.Channel.Id, e.Author.Id);
+        bool tracked = await UserStats.GuildChannelUserTracked(guild.Id, e.Channel.Id, e.Author.Id);
         
         // If the User, Channel and Guild has tracking enabled, update the User Stats.
         if (tracked)
-            await UserStats.ModifyStat(e.Author.Id, e.Channel.Id, e.Guild.Id, sent: userStats.SentMessages + 1);
+            await UserStats.ModifyStat(e.Author.Id, e.Channel.Id, guild.Id, sent: userStats.SentMessages + 1);
 
         string? delete = await BannedPhraseHandler.HandleBannedPhrases(e.Message.Content);
         if (delete is not null)
