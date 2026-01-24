@@ -4,6 +4,7 @@ using DisCatSharp.ApplicationCommands.Context;
 using DisCatSharp.Entities;
 using DisCatSharp.Enums;
 using DisCatSharp.EventArgs;
+using Octokit;
 using QuePoro.Database.Types;
 using QuePoro.Database.Handlers;
 
@@ -142,6 +143,60 @@ public class ResponseCommands : ApplicationCommandsModule
                     "An unexpected error occured."));
                 return;
         }
+    }
+
+    [SlashCommand("modify", "Modifies a response for a message")]
+    public static async Task ModifyMessageResponse(InteractionContext e,
+        [Option("trigger", "The trigger message of the response to modify")]
+        string trigger,
+        [Option("response", "The response message of the response to modify")]
+        string? response = null,
+        [Option("media_alias", "The media alias of the response to modify")]
+        string? mediaAlias = null,
+        [Option("media_category", "The media category of the response to modify")]
+        string? mediaCategory = null,
+        [Option("user", "The user of the response to modify")]
+        DiscordUser? user = null,
+        [Option("channel", "The channel of the response to modify"),
+         ChannelTypes(ChannelType.Text)]
+        DiscordChannel? channel = null,
+        [Option("exact", "The exact status of the response to modify")]
+        bool? exact = null,
+        [Option("enabled", "The enabled status of the response to modify")]
+        bool? enabled = null)
+    {
+        await e.CreateResponseAsync(InteractionResponseType.DeferredChannelMessageWithSource);
+        
+        if (e.Guild is null)
+        {
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                "I do not work in DMs."));
+            return;
+        }
+        
+        UserRow? databaseUser = await Users.GetUser(e.UserId);
+
+        if (databaseUser is null || !databaseUser.Admin)
+        {
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                "You are not authorised to modify responses."));
+            return;
+        }
+
+        Guid? responseId = await Responses.GetResponseId(trigger);
+
+        if (responseId is null)
+        {
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+                "Unable to find a response with the provided trigger."));
+            return;
+        }
+
+        await Responses.ModifyResponse((Guid)responseId, trigger, user?.Id, channel?.Id, response, mediaAlias,
+            mediaCategory, exact, enabled);
+        
+        await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
+            "Successfully modified response."));
     }
 
     [SlashCommand("remove", "Removes a response from a message")]

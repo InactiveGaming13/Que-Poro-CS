@@ -206,9 +206,6 @@ public static class Responses
         string? response = null, string? mediaAlias = null, string? mediaCategory = null, bool? exact = null,
         bool? enabled = null)
     {
-        if (response is null && userId is null && channelId is null && mediaAlias is null && mediaCategory is null 
-            && exact is null && enabled is null) return null;
-        
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
         
