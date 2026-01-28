@@ -90,10 +90,11 @@ internal static class Program
         appCommands.RegisterGlobalCommands<CreateAVcCommands>();
         appCommands.RegisterGlobalCommands<MediaCommands>();
         appCommands.RegisterGlobalCommands<MessageCommands>();
+        appCommands.RegisterGlobalCommands<MessageReactionCommands>();
         appCommands.RegisterGlobalCommands<MusicCommands>();
         appCommands.RegisterGlobalCommands<PrivacyCommands>();
-        appCommands.RegisterGlobalCommands<ReactionCommands>();
         appCommands.RegisterGlobalCommands<ResponseCommands>();
+        appCommands.RegisterGlobalCommands<RoleReactionCommands>();
         appCommands.RegisterGlobalCommands<TempVcCommands>();
         if (config is { TestersEnabled: true })
             appCommands.RegisterGlobalCommands<TesterCommands>();
