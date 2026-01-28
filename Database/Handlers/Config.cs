@@ -30,9 +30,9 @@ public static class Config
         await using NpgsqlCommand command = connection.CreateCommand();
 
         const string query = 
-            "INSERT INTO config (status_type, created_at, status_message, log_channel, temp_vc_enabled, "+
+            "INSERT INTO config (status_type, status_message, log_channel, temp_vc_enabled, "+
             "temp_vc_default_member_limit, temp_vc_default_bitrate, roblox_alerts_enabled, replies_enabled, "+
-            "testers_enabled) VALUES (@statusType, CURRENT_TIMESTAMP, @statusMessage, " +
+            "testers_enabled) VALUES (@statusType, @statusMessage, " +
             "@logChannel, @tempVcEnabled, @tempVcDefaultMemberLimit, @tempVcDefaultBitrate, @robloxAlertsEnabled, " +
             "@repliesEnabled, @testersEnabled)";
         

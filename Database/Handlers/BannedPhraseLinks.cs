@@ -17,8 +17,8 @@ public class BannedPhraseLinks
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
-        const string query = "INSERT INTO banned_phrase_links (created_at, banned_phrase_id, channel_id, guild_id) VALUES " +
-                             "(CURRENT_TIMESTAMP, @bannedPhraseId, @channelId, @guildId)";
+        const string query = "INSERT INTO banned_phrase_links (banned_phrase_id, channel_id, guild_id) VALUES " +
+                             "(@bannedPhraseId, @channelId, @guildId)";
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("bannedPhraseId", NpgsqlDbType.Uuid) { Value = bannedPhraseId });

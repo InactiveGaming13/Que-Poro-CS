@@ -25,8 +25,8 @@ public static class Guilds
         await using NpgsqlCommand command = connection.CreateCommand();
         
         const string query = 
-            "INSERT INTO guilds (id, created_at, name, temp_vc_channel, temp_vc_default_member_limit," +
-            "temp_vc_default_bitrate, roblox_alert_channel, roblox_alert_interval) VALUES (@id, CURRENT_TIMESTAMP, " +
+            "INSERT INTO guilds (id, name, temp_vc_channel, temp_vc_default_member_limit," +
+            "temp_vc_default_bitrate, roblox_alert_channel, roblox_alert_interval) VALUES (@id, " +
             "@name, @tempVcChannel, @tempVcDefaultMemberLimit, @tempVcDefaultBitrate, @robloxAlertChannel, " +
             "@robloxAlertInterval)";
 

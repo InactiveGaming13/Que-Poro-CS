@@ -24,8 +24,8 @@ public static class TempVcs
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
         const string query = 
-            "INSERT INTO temp_vcs (id, created_at, created_by, guild_id, master, name, bitrate, user_limit, user_count, " +
-            " user_queue) VALUES (@id, CURRENT_TIMESTAMP, @createdBy, @guildId, @master, @name, @bitrate, @userLimit, " +
+            "INSERT INTO temp_vcs (id, created_by, guild_id, master, name, bitrate, user_limit, user_count, " +
+            " user_queue) VALUES (@id, @createdBy, @guildId, @master, @name, @bitrate, @userLimit, " +
             "@userCount, @userQueue)";
 
         command.CommandText = query;
