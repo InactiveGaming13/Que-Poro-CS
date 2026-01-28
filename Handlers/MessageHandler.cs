@@ -108,7 +108,7 @@ public static class MessageHandler
         string? delete = await BannedPhraseHandler.HandleBannedPhrases(e.Message.Content);
         if (delete is not null)
         {
-            string response = $"Hey {e.Author.Mention}! You can't send that here because {delete}.";
+            string response = $"Hey {e.Author.Mention}! You can't send that here because {delete}{(char.IsPunctuation(delete, delete.Length-1) ? "." : null)}";
             DiscordChannel discordChannel = e.Message.Channel;
             await e.Message.DeleteAsync(delete);
             await discordChannel.SendMessageAsync(response);
@@ -120,7 +120,7 @@ public static class MessageHandler
 
         // If the User has Reactions enabled, handle them.
         if (user is { ReactedTo: true })
-            await ReactionHandler.HandleUserReactions(client, e, user);
+            await MessageReactionHandler.HandleUserReactions(client, e, user);
 
         // If the User has Responses enabled, handle them.
         if (user is { RepliedTo: true })
