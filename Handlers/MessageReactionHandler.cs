@@ -10,12 +10,12 @@ using QuePoro.Database.Types;
 
 namespace QuePoro.Handlers;
 
-[SlashCommandGroup("reactions", "Reaction commands")]
-public class ReactionCommands : ApplicationCommandsModule
+[SlashCommandGroup("message_reactions", "Message Reaction commands")]
+public class MessageReactionCommands : ApplicationCommandsModule
 {
     [SlashCommand("add", "Adds a Reaction to you or a specified user (admin)")]
-    public static async Task AddReaction(InteractionContext e,
-        [Option("emoji", "emoji you want to have reacted")] String emoji,
+    public static async Task AddMessageReaction(InteractionContext e,
+        [Option("emoji", "emoji you want to have reacted")] string emoji,
         [Option("user", "The user you want to add to your reactions")] DiscordUser? user = null,
         [Option("trigger", "A message to trigger the reaction")] string? triggerMessage = null,
         [Option("exact_trigger", "Whether the trigger message should equal the message content")]
@@ -30,7 +30,7 @@ public class ReactionCommands : ApplicationCommandsModule
             return;
         }
         
-        DiscordEmoji? discordEmoji = ReactionHandler.GetEmoji(e.Client, emoji);
+        DiscordEmoji? discordEmoji = MessageReactionHandler.GetEmoji(e.Client, emoji);
         if (discordEmoji is null)
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
@@ -45,7 +45,7 @@ public class ReactionCommands : ApplicationCommandsModule
         switch (user)
         {
             case null when databaseUser is { Admin: true }:
-                if (!await Reactions.AddReaction(e.UserId, discordEmoji.Name, null, triggerMessage, exactTrigger))
+                if (!await MessageReactions.AddMessageReaction(e.UserId, discordEmoji.Name, null, triggerMessage, exactTrigger))
                 {
                     await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                         "An unexpected database error occured."));
@@ -59,7 +59,7 @@ public class ReactionCommands : ApplicationCommandsModule
                 
             case null when databaseUser is { Admin: false}:
             case not null when user == e.User:
-                if (!await Reactions.AddReaction(e.UserId, discordEmoji.Name, e.UserId, triggerMessage, exactTrigger))
+                if (!await MessageReactions.AddMessageReaction(e.UserId, discordEmoji.Name, e.UserId, triggerMessage, exactTrigger))
                 {
                     await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                         "An unexpected database error occured."));
@@ -72,7 +72,7 @@ public class ReactionCommands : ApplicationCommandsModule
                 return;
 
             case not null when user != e.User && databaseUser is { Admin: true }:
-                if (!await Reactions.AddReaction(e.UserId, discordEmoji.Name, user.Id, triggerMessage, exactTrigger))
+                if (!await MessageReactions.AddMessageReaction(e.UserId, discordEmoji.Name, user.Id, triggerMessage, exactTrigger))
                 {
                     await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                         "An unexpected database error occured."));
@@ -111,7 +111,7 @@ public class ReactionCommands : ApplicationCommandsModule
             return;
         }
 
-        DiscordEmoji? discordEmoji = ReactionHandler.GetEmoji(e.Client, emoji);
+        DiscordEmoji? discordEmoji = MessageReactionHandler.GetEmoji(e.Client, emoji);
 
         if (discordEmoji is null)
         {
@@ -127,25 +127,25 @@ public class ReactionCommands : ApplicationCommandsModule
         if (!databaseUser.Admin && user is null)
             user = e.User;
         
-        if (!await Reactions.ReactionExists(emoji, user?.Id, trigger))
+        if (!await MessageReactions.MessageReactionExists(emoji, user?.Id, trigger))
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "A reaction doesn't exist with the supplied parameters."));
             return;
         }
         
-        Guid emojiId = await Reactions.GetReactionId(discordEmoji.Name, user?.Id, trigger);
+        Guid emojiId = await MessageReactions.GetMessageReactionId(discordEmoji.Name, user?.Id, trigger);
 
         switch (user)
         {
             case not null when user == e.User:
-                await Reactions.RemoveReaction(emojiId);
+                await MessageReactions.RemoveMessageReaction(emojiId);
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                     $"Removed {emoji} from your reactions."));
                 return;
                 
             case not null when user != e.User && databaseUser is { Admin: true }:
-                await Reactions.RemoveReaction(emojiId);
+                await MessageReactions.RemoveMessageReaction(emojiId);
                 await e.EditResponseAsync(
                     new DiscordWebhookBuilder().WithContent($"Removed {emoji} from {user.Mention} reactions."));
                 return;
@@ -176,18 +176,18 @@ public class ReactionCommands : ApplicationCommandsModule
             return;
         }
 
-        List<ReactionRow> reactions;
+        List<MessageReactionRow> reactions;
         string title;
 
         switch (user)
         {
             case null:
-                reactions = await Reactions.GetReactions(e.UserId);
+                reactions = await MessageReactions.GetMessageReactions(e.UserId);
                 title = $"Reactions for {e.User.GlobalName}";
                 break;
             
             default:
-                reactions = await Reactions.GetReactions(user.Id);
+                reactions = await MessageReactions.GetMessageReactions(user.Id);
                 title = $"Reactions for {user.GlobalName}";
                 break;
         }
@@ -207,7 +207,7 @@ public class ReactionCommands : ApplicationCommandsModule
     }
 }
 
-public static class ReactionHandler
+public static class MessageReactionHandler
 {
     public static DiscordEmoji? GetEmoji(DiscordClient client, string emoji)
     {
@@ -230,12 +230,12 @@ public static class ReactionHandler
         if (!user.ReactedTo)
             return;
         
-        List<ReactionRow> userReactions = await Reactions.GetReactions(e.Author.Id);
+        List<MessageReactionRow> userReactions = await MessageReactions.GetMessageReactions(e.Author.Id);
         
         if (userReactions.Count == 0)
             return;
         
-        foreach (ReactionRow reaction in userReactions)
+        foreach (MessageReactionRow reaction in userReactions)
         {
             DiscordEmoji? discordEmoji = GetEmoji(client, reaction.Emoji);
             
