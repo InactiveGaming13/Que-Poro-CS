@@ -30,8 +30,8 @@ public static class Responses
         await using NpgsqlCommand command = connection.CreateCommand();
         
         const string query = 
-            "INSERT INTO responses (created_at, created_by, user_id, channel_id, trigger, response, media_alias, media_category, " +
-            "exact, enabled) VALUES (CURRENT_TIMESTAMP, @createdBy, @userId, @channelId, @trigger, @response, @mediaAlias, " +
+            "INSERT INTO responses (created_by, user_id, channel_id, trigger, response, media_alias, media_category, " +
+            "exact, enabled) VALUES (@createdBy, @userId, @channelId, @trigger, @response, @mediaAlias, " +
             "@mediaCategory, @exactTrigger, @enabled)";
 
         command.CommandText = query;

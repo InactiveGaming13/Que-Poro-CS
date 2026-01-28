@@ -21,8 +21,8 @@ public static class BannedPhrases
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
         const string query =
-            "INSERT INTO banned_phrases (created_at, created_by, severity, phrase, enabled, reason) " +
-            "VALUES (CURRENT_TIMESTAMP, @createdBy, @severity, @phrase, @enabled, @reason)";
+            "INSERT INTO banned_phrases (created_by, severity, phrase, enabled, reason) " +
+            "VALUES (@createdBy, @severity, @phrase, @enabled, @reason)";
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("createdBy", NpgsqlDbType.Numeric) { Value = (long)creatorId });

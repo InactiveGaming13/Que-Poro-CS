@@ -24,8 +24,8 @@ public static class UserStats
         await using NpgsqlCommand command = connection.CreateCommand();
         
         const string query = 
-            "INSERT INTO user_stats (id, created_at, channel_id, guild_id, sent, temp_vc_created, " +
-            "mod_actions, strikes) VALUES (@id, CURRENT_TIMESTAMP, @channelId, @guildId, @sent, " +
+            "INSERT INTO user_stats (id, channel_id, guild_id, sent, temp_vc_created, " +
+            "mod_actions, strikes) VALUES (@id, @channelId, @guildId, @sent, " +
             "@tempVcCreated, @modActions, @strikes)";
         
         command.CommandText = query;

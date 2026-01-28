@@ -22,8 +22,8 @@ public static class Channels
         await using NpgsqlCommand command = connection.CreateCommand();
         
         const string query = 
-            "INSERT INTO channels (id, created_at, guild_id, name, topic) VALUES " + 
-            "(@id, CURRENT_TIMESTAMP, @guildId, @name, @topic)";
+            "INSERT INTO channels (id, guild_id, name, topic) VALUES " + 
+            "(@id, @guildId, @name, @topic)";
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });

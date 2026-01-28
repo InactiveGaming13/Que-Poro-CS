@@ -23,7 +23,7 @@ public static class Media
         await using NpgsqlCommand command = connection.CreateCommand();
         
         const string query =
-            "INSERT INTO media (created_at, created_by, alias, category, url) VALUES (CURRENT_TIMESTAMP, @createdBy, " +
+            "INSERT INTO media (created_by, alias, category, url) VALUES (@createdBy, " +
             "@alias, @category, @url)";
         
         command.CommandText = query;

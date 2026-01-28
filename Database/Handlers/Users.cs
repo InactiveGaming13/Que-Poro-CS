@@ -25,8 +25,8 @@ public static class Users
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
         const string query = 
-            "INSERT INTO users (id, created_at, username, global_name, admin, replied_to, banned) " +
-            "VALUES (@id, CURRENT_TIMESTAMP, @username, @globalName, @admin, @repliedTo, @banned)";
+            "INSERT INTO users (id, username, global_name, admin, replied_to, banned) " +
+            "VALUES (@id, @username, @globalName, @admin, @repliedTo, @banned)";
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)userId });
