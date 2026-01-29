@@ -305,8 +305,6 @@ public static class RoleReactionHandler
             // No Role Reaction exists, so ignore.
             return;
         }
-        
-        Console.WriteLine($"REACTION ADDITION MATCH! Role ID: {roleReactionRow.RoleId} | Reaction: {roleReactionRow.ReactionCode}");
 
         DiscordRole discordRole = await e.Guild.GetRoleAsync(roleReactionRow.RoleId);
         DiscordMember discordMember = await e.User.ConvertToMember(e.Guild);
@@ -333,8 +331,6 @@ public static class RoleReactionHandler
             // No Role Reaction exists, so ignore.
             return;
         }
-        
-        Console.WriteLine($"REACTION REMOVAL MATCH! Role ID: {roleReactionRow.RoleId} | Reaction: {roleReactionRow.ReactionCode}");
         
         DiscordRole discordRole = await e.Guild.GetRoleAsync(roleReactionRow.RoleId);
         DiscordMember discordMember = await e.User.ConvertToMember(e.Guild);
