@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using DisCatSharp.Entities;
 using Npgsql;
 using NpgsqlTypes;
 using QuePoro.Database.Types;
@@ -75,6 +76,62 @@ public class RoleReactions
         }
     }
 
+    public static async Task<bool> ModifyRoleReaction(Guid reactionId, ulong newRoleId, string newReactionCode)
+    {
+        await using NpgsqlConnection connection = await Database.GetConnection();
+        await using NpgsqlCommand command = connection.CreateCommand();
+
+        const string query = "UPDATE role_reactions SET role_id=@roleId, reaction_code=@reactionCode WHERE id=@id";
+
+        command.CommandText = query;
+        command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Uuid) { Value = reactionId });
+        command.Parameters.Add(new NpgsqlParameter("roleId", NpgsqlDbType.Numeric) { Value = (long)newRoleId });
+        command.Parameters.Add(new NpgsqlParameter("reactionCode", NpgsqlDbType.Text) { Value = newReactionCode });
+
+        try
+        {
+            await command.ExecuteNonQueryAsync();
+            return true;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Gets the ID of a Role Reaction from the database.
+    /// </summary>
+    /// <param name="guildId">The ID of the Guild for the Role Reaction.</param>
+    /// <param name="channelId">The ID of the Channel for the Role Reaction.</param>
+    /// <param name="messageLink">The Link of the Message for the Role Reaction.</param>
+    /// <param name="reactionCode">The Unicode of the Reaction Emoji for the Role Reaction.</param>
+    /// <returns>The ID of the Role Reaction.</returns>
+    /// <exception cref="KeyNotFoundException">Thrown if the Role Reaction doesn't exist.</exception>
+    public static async Task<Guid> GetRoleReactionId(ulong guildId, ulong channelId, string messageLink,
+        string reactionCode)
+    {
+        await using NpgsqlConnection connection = await Database.GetConnection();
+        await using NpgsqlCommand command = connection.CreateCommand();
+
+        const string query =
+            "SELECT id FROM role_reactions WHERE guild_id=@guildId AND channel_id=@channelId AND " +
+            "message_link=@messageLink AND reaction_code=@reactionCode";
+
+        command.CommandText = query;
+        command.Parameters.Add(new NpgsqlParameter("guildId", NpgsqlDbType.Numeric) { Value = (long)guildId });
+        command.Parameters.Add(new NpgsqlParameter("channelId", NpgsqlDbType.Numeric) { Value = (long)channelId });
+        command.Parameters.Add(new NpgsqlParameter("messageLink", NpgsqlDbType.Text) { Value = messageLink });
+        command.Parameters.Add(new NpgsqlParameter("reactionCode", NpgsqlDbType.Text) { Value = reactionCode });
+
+        if (command.ExecuteScalar() is not null)
+            return (Guid)command.ExecuteScalar()!;
+
+        throw new KeyNotFoundException($"No Role Reaction exists with Message ID: {messageLink} " +
+                                       $"Reaction ID: {reactionCode}");
+    }
+
     /// <summary>
     /// Gets the ID of a Role Reaction from the database.
     /// </summary>
@@ -124,7 +181,7 @@ public class RoleReactions
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("reactionId", DbType.Guid) { Value = reactionId });
-        
+
         await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
         if (await reader.ReadAsync())
             return new RoleReactionRow
@@ -141,7 +198,7 @@ public class RoleReactions
 
         throw new KeyNotFoundException($"No Role Reaction exists with ID: {reactionId}");
     }
-    
+
     /// <summary>
     /// Gets a list of Role Reactions for a specified Guild from the database.
     /// </summary>
@@ -156,7 +213,7 @@ public class RoleReactions
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("guildId", NpgsqlDbType.Numeric) { Value = (long)guildId });
-        
+
         List<RoleReactionRow> reactions = [];
 
         await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
@@ -177,7 +234,7 @@ public class RoleReactions
 
         return reactions;
     }
-    
+
     /// <summary>
     /// Gets a list of Role Reactions for a specified Guild and Channel from the database.
     /// </summary>
@@ -194,12 +251,14 @@ public class RoleReactions
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("guildId", NpgsqlDbType.Numeric) { Value = (long)guildId });
         command.Parameters.Add(new NpgsqlParameter("channelId", NpgsqlDbType.Numeric) { Value = (long)channelId });
-        
+
         List<RoleReactionRow> reactions = [];
 
         await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
+        Console.WriteLine(reader.GetString(reader.GetOrdinal("message_link")));
         while (await reader.ReadAsync())
         {
+            Console.WriteLine(reader.GetString(reader.GetOrdinal("message_link")));
             reactions.Add(new RoleReactionRow
             {
                 Id = reader.GetGuid(reader.GetOrdinal("id")),
@@ -207,7 +266,7 @@ public class RoleReactions
                 CreatedBy = (ulong)reader.GetInt64(reader.GetOrdinal("created_by")),
                 GuildId = (ulong)reader.GetInt64(reader.GetOrdinal("guild_id")),
                 ChannelId = (ulong)reader.GetInt64(reader.GetOrdinal("channel_id")),
-                MessageLink = reader.GetString(reader.GetOrdinal("message_id")),
+                MessageLink = reader.GetString(reader.GetOrdinal("message_link")),
                 RoleId = (ulong)reader.GetInt64(reader.GetOrdinal("role_id")),
                 ReactionCode = reader.GetString(reader.GetOrdinal("reacton_code"))
             });
