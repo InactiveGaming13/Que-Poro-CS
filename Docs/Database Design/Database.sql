@@ -41,14 +41,16 @@ CREATE TABLE IF NOT EXISTS channels
 
 CREATE TABLE IF NOT EXISTS users
 (
-    id          NUMERIC PRIMARY KEY NOT NULL,
-    created_at  TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    username    TEXT                NOT NULL,
-    global_name TEXT,
-    admin       BOOLEAN             NOT NULL DEFAULT FALSE,
-    replied_to  BOOLEAN             NOT NULL DEFAULT TRUE,
-    reacted_to  BOOLEAN             NOT NULL DEFAULT TRUE,
-    banned      BOOLEAN             NOT NULL DEFAULT FALSE
+    id                    NUMERIC PRIMARY KEY NOT NULL,
+    created_at            TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    username              TEXT                NOT NULL,
+    global_name           TEXT,
+    admin                 BOOLEAN             NOT NULL DEFAULT FALSE,
+    replied_to            BOOLEAN             NOT NULL DEFAULT TRUE,
+    reacted_to            BOOLEAN             NOT NULL DEFAULT TRUE,
+    banned                BOOLEAN             NOT NULL DEFAULT FALSE,
+    restart_game_servers  BOOLEAN             NOT NULL DEFAULT FALSE,
+    shutdown_game_servers BOOLEAN             NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS user_stats
@@ -108,7 +110,7 @@ CREATE TABLE IF NOT EXISTS config
 
 CREATE TABLE IF NOT EXISTS media
 (
-    id         uuid PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
+    id         UUID PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
     created_at TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by NUMERIC          NOT NULL
         CONSTRAINT media_created_by_fk
@@ -120,7 +122,7 @@ CREATE TABLE IF NOT EXISTS media
 
 CREATE TABLE IF NOT EXISTS banned_phrases
 (
-    id         uuid PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
+    id         UUID PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
     created_at TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by NUMERIC          NOT NULL,
     severity   INTEGER          NOT NULL,
@@ -131,9 +133,9 @@ CREATE TABLE IF NOT EXISTS banned_phrases
 
 CREATE TABLE IF NOT EXISTS banned_phrase_links
 (
-    id               uuid PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
+    id               UUID PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
     created_at       TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    banned_phrase_id uuid             NOT NULL
+    banned_phrase_id UUID             NOT NULL
         CONSTRAINT banned_phrase_links_banned_phrase_id_fk
             REFERENCES banned_phrases,
     channel_id       NUMERIC
@@ -144,9 +146,22 @@ CREATE TABLE IF NOT EXISTS banned_phrase_links
             REFERENCES guilds
 );
 
+CREATE TABLE IF NOT EXISTS game_servers
+(
+    id                 TEXT PRIMARY KEY NOT NULL,
+    created_at         TIMESTAMP        NOT NULL    DEFAULT CURRENT_TIMESTAMP,
+    server_name        TEXT             NOT NULL UNIQUE,
+    server_description TEXT             NOT NULL UNIQUE,
+    restartable        BOOLEAN          NOT NULL    DEFAULT FALSE,
+    screen_name        TEXT             NULL UNIQUE DEFAULT NULL,
+    restart_method     TEXT             NOT NULL,
+    shutdown_method    TEXT             NOT NULL,
+    broadcast_method   TEXT             NULL        DEFAULT NULL
+);
+
 CREATE TABLE IF NOT EXISTS message_reactions
 (
-    id            uuid PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
+    id            UUID PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
     created_at    TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by    NUMERIC          NOT NULL
         CONSTRAINT message_reactions_created_by_id_fk
@@ -161,7 +176,7 @@ CREATE TABLE IF NOT EXISTS message_reactions
 
 CREATE TABLE IF NOT EXISTS role_reactions
 (
-    id            uuid PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
+    id            UUID PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
     created_at    TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by    NUMERIC          NOT NULL
         CONSTRAINT role_reactions_created_by_id_fk
@@ -179,7 +194,7 @@ CREATE TABLE IF NOT EXISTS role_reactions
 
 CREATE TABLE IF NOT EXISTS responses
 (
-    id             uuid PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
+    id             UUID PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
     created_at     TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by     NUMERIC          NOT NULL
         CONSTRAINT responses_created_by_fk
