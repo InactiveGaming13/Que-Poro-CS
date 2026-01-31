@@ -71,9 +71,15 @@ public class GameServerCommands : ApplicationCommandsModule
         process.StartInfo = processStartInfo;
         process.Start();
 
-        string result = await process.StandardOutput.ReadToEndAsync();
-        string[] lines = result.Split("\n");
-        Console.WriteLine($"PROC CHECK: {lines[^2]}");
+        string output = await process.StandardOutput.ReadToEndAsync();
+        string[] results = output.Split("\n");
+        string result = results[^2];
+        
+        if (results.Length <= 2 || string.IsNullOrWhiteSpace(result))
+        {
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent("PROC ID DOESN'T EXIST!"));
+            return;
+        }
 
         await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Done!"));
     }
