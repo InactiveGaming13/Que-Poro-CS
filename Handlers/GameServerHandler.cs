@@ -60,7 +60,7 @@ public class GameServerCommands : ApplicationCommandsModule
         }
 
         // "/usr/bin/ps", $"-p {procId}"
-        ProcessStartInfo processStartInfo = new ProcessStartInfo("ipconfig", "/all")
+        ProcessStartInfo processStartInfo = new ProcessStartInfo("/usr/bin/ps", $"-p {procId}")
             {
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
