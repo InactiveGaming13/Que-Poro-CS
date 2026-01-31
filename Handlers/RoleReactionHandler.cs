@@ -43,16 +43,13 @@ public class RoleReactionCommands : ApplicationCommandsModule
         }
 
         if (!await Users.UserExists(e.UserId))
-        {
             await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName);
-            return;
-        }
 
         if (await Users.GetUser(e.UserId) is { Admin: false } &&
             !e.Member.Permissions.HasPermission(Permissions.ManageRoles))
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                "You lack the permissions to use this command."));
+                "You are not authorised to use this command."));
             return;
         }
 
@@ -129,16 +126,13 @@ public class RoleReactionCommands : ApplicationCommandsModule
         }
 
         if (!await Users.UserExists(e.UserId))
-        {
             await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName);
-            return;
-        }
 
         if (await Users.GetUser(e.UserId) is { Admin: false } &&
             !e.Member.Permissions.HasPermission(Permissions.ManageRoles))
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                "You lack the permissions to use this command."));
+                "You are not authorised to use this command."));
             return;
         }
 
@@ -211,18 +205,15 @@ public class RoleReactionCommands : ApplicationCommandsModule
                 "I do not work in DMs."));
             return;
         }
-
+        
         if (!await Users.UserExists(e.UserId))
-        {
             await Users.AddUser(e.UserId, e.User.Username, e.User.GlobalName);
-            return;
-        }
 
         if (await Users.GetUser(e.UserId) is { Admin: false } &&
             !e.Member.Permissions.HasPermission(Permissions.ManageRoles))
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
-                "You lack the permissions to use this command."));
+                "You are not authorised to use this command."));
             return;
         }
 
@@ -302,7 +293,7 @@ public static class RoleReactionHandler
         }
         catch (KeyNotFoundException)
         {
-            // No Role Reaction exists, so ignore.
+            // No Role Reaction exists, so ignore the event.
             return;
         }
 
@@ -328,7 +319,7 @@ public static class RoleReactionHandler
         }
         catch (KeyNotFoundException)
         {
-            // No Role Reaction exists, so ignore.
+            // No Role Reaction exists, so ignore the event.
             return;
         }
         
