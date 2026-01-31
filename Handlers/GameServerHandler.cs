@@ -73,7 +73,7 @@ public class GameServerCommands : ApplicationCommandsModule
 
         string result = await process.StandardOutput.ReadToEndAsync();
         string[] lines = result.Split("\n");
-        Console.WriteLine($"PROC CHECK: {lines[^1]}");
+        Console.WriteLine($"PROC CHECK: {lines[^2]}");
 
         await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Done!"));
     }
