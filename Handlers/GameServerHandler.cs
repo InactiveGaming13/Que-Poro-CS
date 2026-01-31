@@ -60,14 +60,14 @@ public class GameServerCommands : ApplicationCommandsModule
         }
 
         // "/usr/bin/ps", $"-p {procId}"
-        ProcessStartInfo processStartInfo = new ProcessStartInfo("/usr/bin/ps", $"-p {procId}")
+        ProcessStartInfo processStartInfo = new("/usr/bin/ps", $"-p {procId}")
             {
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
 
-        Process process = new Process();
+        Process process = new();
         process.StartInfo = processStartInfo;
         process.Start();
 
