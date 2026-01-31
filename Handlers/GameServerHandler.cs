@@ -59,28 +59,53 @@ public class GameServerCommands : ApplicationCommandsModule
             return;
         }
 
-        // "/usr/bin/ps", $"-p {procId}"
-        ProcessStartInfo processStartInfo = new("/usr/bin/ps", $"-p {procId}")
+        // Checks if the Proc ID exists on the system.
+        ProcessStartInfo processIdStartInfo = new("/usr/bin/ps", $"-p {procId}")
             {
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
 
-        Process process = new();
-        process.StartInfo = processStartInfo;
-        process.Start();
+        Process processIdCheck = new();
+        processIdCheck.StartInfo = processIdStartInfo;
+        processIdCheck.Start();
 
-        string output = await process.StandardOutput.ReadToEndAsync();
-        string[] results = output.Split("\n");
-        string result = results[^2];
+        string processIdOutput = await processIdCheck.StandardOutput.ReadToEndAsync();
+        string[] processIdResults = processIdOutput.Split("\n");
+        string processIdResult = processIdResults[^2];
         
-        if (results.Length <= 2 || string.IsNullOrWhiteSpace(result))
+        if (processIdResults.Length <= 2 || string.IsNullOrWhiteSpace(processIdResult))
         {
-            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent("PROC ID DOESN'T EXIST!"));
+            await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Process ID doesn't exist."));
             return;
         }
+        
+        // Checks if the screen exists (if it isn't null).
+        if (screenName is not null)
+        {
+            ProcessStartInfo screenStartInfo = new("/usr/bin/screen", "-ls")
+            {
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
 
+            Process screen = new();
+            screen.StartInfo = screenStartInfo;
+            screen.Start();
+
+            string screenOutput = await screen.StandardOutput.ReadToEndAsync();
+            string[] screenResults = screenOutput.Split("\n");
+            if (!screenResults.Where(line => !string.IsNullOrWhiteSpace(line)).Any(line => line.Contains(screenName)))
+            {
+                await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Screen name doesn't exist."));
+                return;
+            }
+        }
+
+        await GameServers.AddGameServer(procId, serverName, serverDescription, restartable, screenName, restartMethod,
+            shutdownMethod, broadcastMethod);
         await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Done!"));
     }
 }

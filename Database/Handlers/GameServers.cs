@@ -17,17 +17,18 @@ public class GameServers
     /// <param name="screenName">The name of the Unix screen the Game Server is running within.</param>
     /// <param name="restartMethod">The keybind(s) used to restart the Game Server.</param>
     /// <param name="shutdownMethod">The keybind(s) used to shut down the Game Server.</param>
+    /// <param name="broadcastMethod">The command used to say something in game chat.</param>
     /// <returns>Whether the operation was succeeded.</returns>
     public static async Task<bool> AddGameServer(string procId, string serverName, string serverDescription,
-        bool restartable, string screenName, string restartMethod, string shutdownMethod)
+        bool restartable, string? screenName, string restartMethod, string shutdownMethod, string? broadcastMethod)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
 
         const string query =
             "INSERT INTO game_servers (id, server_name, server_description, restartable, screen_name, restart_method, " +
-            "shutdown_method) VALUES (@procId, @serverName, @serverDescription, @restartable, @screenName, " +
-            "@restartMethod, @shutdownMethod)";
+            "shutdown_method, broadcast_method) VALUES (@procId, @serverName, @serverDescription, @restartable, " +
+            "@screenName, @restartMethod, @shutdownMethod, @broadcastMethod)";
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("procId", NpgsqlDbType.Text) { Value = procId });
@@ -35,9 +36,12 @@ public class GameServers
         command.Parameters.Add(
             new NpgsqlParameter("serverDescription", NpgsqlDbType.Text) { Value = serverDescription });
         command.Parameters.Add(new NpgsqlParameter("restartable", DbType.Boolean) { Value = restartable });
-        command.Parameters.Add(new NpgsqlParameter("screenName", NpgsqlDbType.Text) { Value = screenName });
+        command.Parameters.Add(new NpgsqlParameter("screenName", DBNull.Value)
+            { Value = screenName is null ? DBNull.Value : screenName });
         command.Parameters.Add(new NpgsqlParameter("restartMethod", NpgsqlDbType.Text) { Value = restartMethod });
         command.Parameters.Add(new NpgsqlParameter("shutdownMethod", NpgsqlDbType.Text) { Value = shutdownMethod });
+        command.Parameters.Add(new NpgsqlParameter("broadcastMethod", NpgsqlDbType.Text)
+            { Value = broadcastMethod is null ? DBNull.Value : broadcastMethod });
 
         try
         {
@@ -193,7 +197,7 @@ public class GameServers
 
         throw new KeyNotFoundException($"No Game Server exists with ID: {serverId}");
     }
-    
+
     /// <summary>
     /// Gets a single Game Server from the database.
     /// </summary>
@@ -231,7 +235,7 @@ public class GameServers
 
         return gameServerRows;
     }
-    
+
     /// <summary>
     /// Checks if a Game Server exists in the database.
     /// </summary>
