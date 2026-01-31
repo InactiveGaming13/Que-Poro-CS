@@ -1,4 +1,5 @@
-﻿using Npgsql;
+﻿using System.Data;
+using Npgsql;
 using NpgsqlTypes;
 using QuePoro.Database.Types;
 
@@ -14,29 +15,38 @@ public static class Users
     /// <param name="globalName">The global name of the User.</param>
     /// <param name="admin">Whether to make the User an administrator.</param>
     /// <param name="repliedTo">Whether to reply to the User.</param>
+    /// <param name="reactedTo">Whether to react to the User.</param>
     /// <param name="banned">Whether to ban to the User.</param>
-    /// <returns>Whether the operation succeeds.</returns>
-    public static async Task<bool> AddUser(ulong userId, string username, string? globalName, bool admin = false,
-        bool repliedTo = true, bool banned = false)
+    /// <param name="restartGameServers">Whether the user can restart Game Servers.</param>
+    /// <param name="shutdownGameServers">Whether the user can shut down Game Servers.</param>
+    /// <returns>Whether the operation succeeded.</returns>
+    public static async Task<bool> AddUser(ulong userId, string username, string? globalName = null, bool admin = false,
+        bool repliedTo = true, bool reactedTo = true, bool banned = false, bool restartGameServers = false,
+        bool shutdownGameServers = false)
     {
         if ((long)userId == Convert.ToInt64(Environment.GetEnvironmentVariable("BOT_OWNER_ID")))
             admin = true;
-        
+
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
-        const string query = 
-            "INSERT INTO users (id, username, global_name, admin, replied_to, banned) " +
-            "VALUES (@id, @username, @globalName, @admin, @repliedTo, @banned)";
+        const string query =
+            "INSERT INTO users (id, username, global_name, admin, replied_to, banned, restart_game_servers, " +
+            "shutdown_game_servers) VALUES (@id, @username, @globalName, @admin, @repliedTo, @banned, " +
+            "@restartGameServers, @shutdownGameServers)";
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)userId });
         command.Parameters.Add(new NpgsqlParameter("username", NpgsqlDbType.Text) { Value = username });
-        command.Parameters.Add(globalName is null
-        ? new NpgsqlParameter("globalName", NpgsqlDbType.Text) { Value = DBNull.Value }
-        : new NpgsqlParameter("globalName", NpgsqlDbType.Text) { Value = globalName });
+        command.Parameters.Add(new NpgsqlParameter("globalName", NpgsqlDbType.Text)
+            { Value = globalName is null ? DBNull.Value : globalName });
         command.Parameters.Add(new NpgsqlParameter("admin", NpgsqlDbType.Boolean) { Value = admin });
         command.Parameters.Add(new NpgsqlParameter("repliedTo", NpgsqlDbType.Boolean) { Value = repliedTo });
+        command.Parameters.Add(new NpgsqlParameter("reactedTo", DbType.Boolean) { Value = reactedTo });
         command.Parameters.Add(new NpgsqlParameter("banned", NpgsqlDbType.Boolean) { Value = banned });
+        command.Parameters.Add(new NpgsqlParameter("restartGameServers", NpgsqlDbType.Boolean)
+            { Value = restartGameServers });
+        command.Parameters.Add(new NpgsqlParameter("shutdownGameServers", NpgsqlDbType.Boolean)
+            { Value = shutdownGameServers });
 
         try
         {
@@ -54,17 +64,17 @@ public static class Users
     /// Removes a User from the database.
     /// </summary>
     /// <param name="userId">The ID of the User.</param>
-    /// <returns>Whether the operation succeeds.</returns>
+    /// <returns>Whether the operation succeeded.</returns>
     public static async Task<bool> RemoveUser(ulong userId)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
-        
+
         const string query = "DELETE FROM users WHERE id=@id";
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = userId });
-        
+
         try
         {
             await command.ExecuteNonQueryAsync();
@@ -88,19 +98,22 @@ public static class Users
     /// <param name="reactedTo">Whether to react to the User.</param>
     /// <param name="tracked">Whether to track the User.</param>
     /// <param name="banned">Whether to ban the User.</param>
-    /// <returns>Whether the operation succeeds.</returns>
+    /// <param name="restartGameServer"></param>
+    /// <param name="shutdownGameServer"></param>
+    /// <returns>Whether the operation succeeded.</returns>
     public static async Task<bool> ModifyUser(ulong id, string? globalName, string? username = null,
-        bool? admin = null, bool? repliedTo = null, bool? reactedTo = null, bool? tracked = null, bool? banned = null)
+        bool? admin = null, bool? repliedTo = null, bool? reactedTo = null, bool? tracked = null, bool? banned = null,
+        bool? restartGameServer = null, bool? shutdownGameServer = null)
     {
         if (username is null && admin is null && repliedTo is null && reactedTo is null && tracked is null &&
-            banned is null) return false;
-        
+            banned is null && restartGameServer is null && shutdownGameServer is null) return false;
+
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
-            
+
         string query = "UPDATE users SET";
 
-        if (username != null)
+        if (username is not null)
         {
             query += " username=@username,";
             command.Parameters.Add(new NpgsqlParameter("username", NpgsqlDbType.Text) { Value = username });
@@ -108,8 +121,8 @@ public static class Users
 
         query += " global_name=@globalName,";
         command.Parameters.Add(globalName is null
-        ? new NpgsqlParameter("globalName", NpgsqlDbType.Text) { Value = DBNull.Value }
-        : new NpgsqlParameter("globalName", NpgsqlDbType.Text) { Value = globalName }); 
+            ? new NpgsqlParameter("globalName", NpgsqlDbType.Text) { Value = DBNull.Value }
+            : new NpgsqlParameter("globalName", NpgsqlDbType.Text) { Value = globalName });
 
         if (admin is not null)
         {
@@ -123,13 +136,13 @@ public static class Users
             command.Parameters.Add(new NpgsqlParameter("repliedTo", NpgsqlDbType.Boolean) { Value = repliedTo });
         }
 
-        if (reactedTo != null)
+        if (reactedTo is not null)
         {
             query += " reacted_to=@reactedTo,";
             command.Parameters.Add(new NpgsqlParameter("reactedTo", NpgsqlDbType.Boolean) { Value = reactedTo });
         }
 
-        if (tracked != null)
+        if (tracked is not null)
         {
             query += " tracked=@tracked,";
             command.Parameters.Add(new NpgsqlParameter("tracked", NpgsqlDbType.Boolean) { Value = tracked });
@@ -137,8 +150,22 @@ public static class Users
 
         if (banned is not null)
         {
-            query += " banend=@banned";
+            query += " banend=@banned,";
             command.Parameters.Add(new NpgsqlParameter("banned", NpgsqlDbType.Boolean) { Value = banned });
+        }
+
+        if (restartGameServer is not null)
+        {
+            query += " restart_game_server=@restartGameServer,";
+            command.Parameters.Add(new NpgsqlParameter("restartGameServer", NpgsqlDbType.Boolean)
+                { Value = restartGameServer });
+        }
+
+        if (shutdownGameServer is not null)
+        {
+            query += " shutdown_game_server=@shutdownGameServer";
+            command.Parameters.Add(new NpgsqlParameter("shutdownGameServer", NpgsqlDbType.Boolean)
+                { Value = shutdownGameServer });
         }
 
         if (query.EndsWith(','))
@@ -148,18 +175,17 @@ public static class Users
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
-            
+
         try
         {
             await command.ExecuteNonQueryAsync();
+            return true;
         }
         catch (Exception e)
         {
             Console.WriteLine(e);
             return false;
         }
-        
-        return true;
     }
 
     /// <summary>
@@ -172,12 +198,12 @@ public static class Users
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
-        
+
         const string query = "SELECT * FROM users WHERE id=@id";
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
-            
+
         await using NpgsqlDataReader reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
@@ -190,7 +216,7 @@ public static class Users
             {
                 // ignore
             }
-                
+
             return new UserRow
             {
                 Id = (ulong)reader.GetInt64(reader.GetOrdinal("id")),
@@ -201,24 +227,26 @@ public static class Users
                 Admin = reader.GetBoolean(reader.GetOrdinal("admin")),
                 RepliedTo = reader.GetBoolean(reader.GetOrdinal("replied_to")),
                 ReactedTo = reader.GetBoolean(reader.GetOrdinal("reacted_to")),
-                Banned = reader.GetBoolean(reader.GetOrdinal("banned"))
+                Banned = reader.GetBoolean(reader.GetOrdinal("banned")),
+                CanRestartGameServers = reader.GetBoolean(reader.GetOrdinal("restart_game_servers")),
+                CanShutdownGameServers = reader.GetBoolean(reader.GetOrdinal("shutdown_game_servers"))
             };
         }
 
         throw new KeyNotFoundException($"No User exists with ID: {id}");
     }
-    
+
     public static async Task<bool> SetUserTracked(ulong id, bool tracked)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
-        
+
         const string query = "UPDATE users SET tracked=@tracked WHERE id=@id";
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("tracked", NpgsqlDbType.Boolean) { Value = tracked });
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
-        
+
         try
         {
             await command.ExecuteNonQueryAsync();
@@ -230,7 +258,7 @@ public static class Users
             return false;
         }
     }
-    
+
     /// <summary>
     /// Checks if a User exists in the database.
     /// </summary>
@@ -240,9 +268,9 @@ public static class Users
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
-        
+
         const string query = "SELECT created_at FROM users WHERE id=@id";
-        
+
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)id });
 

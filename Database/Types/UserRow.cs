@@ -11,4 +11,6 @@ public class UserRow
     public required bool RepliedTo { get; set; }
     public required bool ReactedTo { get; set; }
     public required bool Banned { get; set; }
+    public required bool CanRestartGameServers { get; set; }
+    public required bool CanShutdownGameServers { get; set; }
 }
