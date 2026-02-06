@@ -106,8 +106,8 @@ public class GameServerCommands : ApplicationCommandsModule
                 return;
             }
 
-            IEnumerable<string> correctScreenName = screenResults.Where(line => line.Contains(screenName));
-            if (correctScreenName.Count() > 1 && !correctScreenName.Any(line => line.Split(".")[1].Equals(screenName, 
+            IEnumerable<string> correctScreenName = screenResults.Where(line => line.Split(".")[1].Split(" ")[0].Contains(screenName));
+            if (correctScreenName.Count() > 1 && !correctScreenName.Any(line => line.Split(".")[1].Split(" ")[0].Equals(screenName, 
                     StringComparison.CurrentCultureIgnoreCase)))
             {
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Invalid screen name."));
