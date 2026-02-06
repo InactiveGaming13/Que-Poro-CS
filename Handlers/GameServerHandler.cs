@@ -97,6 +97,8 @@ public class GameServerCommands : ApplicationCommandsModule
 
             string screenOutput = await screen.StandardOutput.ReadToEndAsync();
             string[] screenResults = screenOutput.Split("\n");
+            Console.WriteLine(screenName);
+            Console.WriteLine(screenResults);
             if (!screenResults.Where(line => !string.IsNullOrWhiteSpace(line)).Any(line => line.Contains(screenName)))
             {
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Screen name doesn't exist."));
