@@ -99,11 +99,22 @@ public class GameServerCommands : ApplicationCommandsModule
             string[] screenResults = screenOutput.Split("\n");
             Console.WriteLine(screenName);
             Console.WriteLine(screenOutput);
+            
             if (!screenResults.Where(line => !string.IsNullOrWhiteSpace(line)).Any(line => line.Contains(screenName)))
             {
                 await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Screen name doesn't exist."));
                 return;
             }
+
+            IEnumerable<string> correctScreenName = screenResults.Where(line => line.Contains(screenName));
+            if (correctScreenName.Count() > 1 && !correctScreenName.Any(line => line.Split(".")[1].Equals(screenName, 
+                    StringComparison.CurrentCultureIgnoreCase)))
+            {
+                await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent("Invalid screen name."));
+                return;
+            }
+
+            screenName = correctScreenName.First();
         }
 
         await GameServers.AddGameServer(procId, serverName, serverDescription, restartable, screenName, restartMethod,
