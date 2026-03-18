@@ -268,6 +268,13 @@ public static class UserStats
         return command.ExecuteScalar() is not null;
     }
     
+    /// <summary>
+    /// Gets whether the User in a specific Guild and Channel is tracked by the bot. 
+    /// </summary>
+    /// <param name="guildId">The ID of the Guild.</param>
+    /// <param name="channelId">The ID of the Channel.</param>
+    /// <param name="userId">The ID of the User.</param>
+    /// <returns>Whether the User is tracked.</returns>
     public static async Task<bool> GuildChannelUserTracked(ulong guildId, ulong channelId, ulong userId)
     {
         await using NpgsqlConnection connection = await Database.GetConnection();
