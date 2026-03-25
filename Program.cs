@@ -46,7 +46,7 @@ internal static class Program
         }
         
         // Define the discord client with its various options
-        DiscordClient discord = new(new DiscordConfiguration()
+        DiscordClient discord = new(new DiscordConfiguration
         {
             Token = botToken,
             TokenType = TokenType.Bot,

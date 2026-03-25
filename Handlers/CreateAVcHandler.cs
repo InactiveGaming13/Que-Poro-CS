@@ -247,7 +247,7 @@ public class TempVcCommands : ApplicationCommandsModule
             return;
         }
 
-        if (!databaseTempVc.Master.Equals(e.UserId))
+        if (!databaseTempVc.Master.Equals(e.UserId) && !Environment.GetEnvironmentVariable("BOT_OWNER_ID").Equals(e.UserId.ToString()))
         {
             await e.EditResponseAsync(new DiscordWebhookBuilder().WithContent(
                 "You are unable to modify temp VCs since you are not the channel master."));
