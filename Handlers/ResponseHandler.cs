@@ -398,7 +398,8 @@ public class ResponseCommands : ApplicationCommandsModule
             $"<channelMention> - Replaced with the current channels mention (e.g <channelMention> -> {e.Channel.Mention})\n" +
             $"<channelName> - Replaced with the current channels name (e.g <channelName> -> {e.Channel.Name})\n" +
             $"<mediaAlias:<Alias>> - Replaced with a specified Media Alias (e.g <mediaAlias:test> -> {Media.GetMedia("test").GetAwaiter().GetResult().Url})\n" +
-            $"<mediaCategory:<category>> - Replaced with a random Media from a category (e.g <mediaCategory:test> -> {mediaRows[random.Next(mediaRows.Count)].Url})";
+            $"<mediaCategory:<category>> - Replaced with a random Media from a category (e.g <mediaCategory:test> -> {mediaRows[random.Next(mediaRows.Count)].Url})" +
+            $"<newLine> or \\n - Creates a new line in the response.";
         
         DiscordEmbed embedBuilder = new DiscordEmbedBuilder
         {
@@ -472,6 +473,8 @@ public static class ResponseHandler
         response = response.Replace("<userGlobalName>", e.Author.GlobalName);
         response = response.Replace("<channelMention>", e.Channel.Mention);
         response = response.Replace("<channelName>", e.Channel.Name);
+        response = response.Replace("<newLine>", "\r\n");
+        response = response.Replace("\\n", "\r\n");
         
         string mediaAlias = response.Split("<mediaAlias:")[0].Split(">")[0];
         if (!string.IsNullOrEmpty(mediaAlias))
