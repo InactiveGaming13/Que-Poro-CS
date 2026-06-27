@@ -398,7 +398,7 @@ public class ResponseCommands : ApplicationCommandsModule
             $"<channelMention> - Replaced with the current channels mention (e.g <channelMention> -> {e.Channel.Mention})\n" +
             $"<channelName> - Replaced with the current channels name (e.g <channelName> -> {e.Channel.Name})\n" +
             $"<mediaAlias:<Alias>> - Replaced with a specified Media Alias (e.g <mediaAlias:test> -> {Media.GetMedia("test").GetAwaiter().GetResult().Url})\n" +
-            $"<mediaCategory:<category>> - Replaced with a random Media from a category (e.g <mediaCategory:test> -> {mediaRows[random.Next(mediaRows.Count)].Url})" +
+            $"<mediaCategory:<category>> - Replaced with a random Media from a category (e.g <mediaCategory:test> -> {mediaRows[random.Next(mediaRows.Count)].Url})\n" +
             $"<newLine> or \\n - Creates a new line in the response.";
         
         DiscordEmbed embedBuilder = new DiscordEmbedBuilder
