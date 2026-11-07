@@ -5,6 +5,8 @@ DROP TABLE IF EXISTS media;
 DROP TABLE IF EXISTS role_reactions;
 DROP TABLE IF EXISTS message_reactions;
 DROP TABLE IF EXISTS temp_vcs;
+DROP TABLE IF EXISTS timers;
+DROP TABLE IF EXISTS alarms;
 DROP TABLE IF EXISTS user_stats;
 DROP TABLE IF EXISTS responses;
 DROP TABLE IF EXISTS channels CASCADE;
@@ -50,7 +52,8 @@ CREATE TABLE IF NOT EXISTS users
     reacted_to            BOOLEAN             NOT NULL DEFAULT TRUE,
     banned                BOOLEAN             NOT NULL DEFAULT FALSE,
     restart_game_servers  BOOLEAN             NOT NULL DEFAULT FALSE,
-    shutdown_game_servers BOOLEAN             NOT NULL DEFAULT FALSE
+    shutdown_game_servers BOOLEAN             NOT NULL DEFAULT FALSE,
+    timers                BOOLEAN             NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS user_stats
@@ -211,4 +214,34 @@ CREATE TABLE IF NOT EXISTS responses
     media_category TEXT,
     exact          bool             NOT NULL DEFAULT FALSE,
     enabled        bool             NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE IF NOT EXISTS timers
+(
+    id        UUID PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
+    duration  INTEGER                                     NOT NULL,
+    repeat    BOOLEAN          DEFAULT FALSE              NOT NULL,
+    message   TEXT                                        NOT NULL,
+    "user"    NUMERIC
+        CONSTRAINT timers_user_id_fk
+            REFERENCES users,
+    channel   NUMERIC
+        CONSTRAINT timers_channel_id_fk
+            REFERENCES channels,
+    "enabled" BOOLEAN          DEFAULT TRUE               NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS alarms
+(
+    id        UUID PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
+    time      TIME                                        NOT NULL,
+    repeat    BOOLEAN          DEFAULT FALSE              NOT NULL,
+    message   TEXT                                        NOT NULL,
+    "user"    NUMERIC
+        CONSTRAINT timers_user_id_fk
+            REFERENCES users,
+    channel   NUMERIC
+        CONSTRAINT timers_channel_id_fk
+            REFERENCES channels,
+    "enabled" BOOLEAN          DEFAULT TRUE               NOT NULL
 );
