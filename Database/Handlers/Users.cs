@@ -19,10 +19,11 @@ public static class Users
     /// <param name="banned">Whether to ban to the User.</param>
     /// <param name="restartGameServers">Whether the user can restart Game Servers.</param>
     /// <param name="shutdownGameServers">Whether the user can shut down Game Servers.</param>
+    /// <param name="modifyTimer">Whether the user can modify a timer.</param>
     /// <returns>Whether the operation succeeded.</returns>
     public static async Task<bool> AddUser(ulong userId, string username, string? globalName = null, bool admin = false,
         bool repliedTo = true, bool reactedTo = true, bool banned = false, bool restartGameServers = false,
-        bool shutdownGameServers = false)
+        bool shutdownGameServers = false, bool modifyTimer = false)
     {
         if ((long)userId == Convert.ToInt64(Environment.GetEnvironmentVariable("BOT_OWNER_ID")))
             admin = true;
@@ -31,8 +32,8 @@ public static class Users
         await using NpgsqlCommand command = connection.CreateCommand();
         const string query =
             "INSERT INTO users (id, username, global_name, admin, replied_to, banned, restart_game_servers, " +
-            "shutdown_game_servers) VALUES (@id, @username, @globalName, @admin, @repliedTo, @banned, " +
-            "@restartGameServers, @shutdownGameServers)";
+            "shutdown_game_servers, timer) VALUES (@id, @username, @globalName, @admin, @repliedTo, @banned, " +
+            "@restartGameServers, @shutdownGameServers, @timer)";
 
         command.CommandText = query;
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Numeric) { Value = (long)userId });
@@ -47,6 +48,7 @@ public static class Users
             { Value = restartGameServers });
         command.Parameters.Add(new NpgsqlParameter("shutdownGameServers", NpgsqlDbType.Boolean)
             { Value = shutdownGameServers });
+        command.Parameters.Add(new NpgsqlParameter("timer", NpgsqlDbType.Boolean) { Value = modifyTimer });
 
         try
         {
@@ -100,13 +102,14 @@ public static class Users
     /// <param name="banned">Whether to ban the User.</param>
     /// <param name="restartGameServer"></param>
     /// <param name="shutdownGameServer"></param>
+    /// <param name="modifyTimer"></param>
     /// <returns>Whether the operation succeeded.</returns>
     public static async Task<bool> ModifyUser(ulong id, string? globalName, string? username = null,
         bool? admin = null, bool? repliedTo = null, bool? reactedTo = null, bool? tracked = null, bool? banned = null,
-        bool? restartGameServer = null, bool? shutdownGameServer = null)
+        bool? restartGameServer = null, bool? shutdownGameServer = null, bool? modifyTimer = null)
     {
         if (username is null && admin is null && repliedTo is null && reactedTo is null && tracked is null &&
-            banned is null && restartGameServer is null && shutdownGameServer is null) return false;
+            banned is null && restartGameServer is null && shutdownGameServer is null && modifyTimer is null) return false;
 
         await using NpgsqlConnection connection = await Database.GetConnection();
         await using NpgsqlCommand command = connection.CreateCommand();
@@ -166,6 +169,12 @@ public static class Users
             query += " shutdown_game_server=@shutdownGameServer";
             command.Parameters.Add(new NpgsqlParameter("shutdownGameServer", NpgsqlDbType.Boolean)
                 { Value = shutdownGameServer });
+        }
+        
+        if (modifyTimer is not null)
+        {
+            query += " timer=@timer,";
+            command.Parameters.Add(new NpgsqlParameter("timer", NpgsqlDbType.Boolean) { Value = modifyTimer });
         }
 
         if (query.EndsWith(','))
@@ -229,7 +238,8 @@ public static class Users
                 ReactedTo = reader.GetBoolean(reader.GetOrdinal("reacted_to")),
                 Banned = reader.GetBoolean(reader.GetOrdinal("banned")),
                 CanRestartGameServers = reader.GetBoolean(reader.GetOrdinal("restart_game_servers")),
-                CanShutdownGameServers = reader.GetBoolean(reader.GetOrdinal("shutdown_game_servers"))
+                CanShutdownGameServers = reader.GetBoolean(reader.GetOrdinal("shutdown_game_servers")),
+                Timer = reader.GetBoolean(reader.GetOrdinal("timer"))
             };
         }
 

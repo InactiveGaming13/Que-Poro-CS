@@ -13,4 +13,5 @@ public class UserRow
     public required bool Banned { get; set; }
     public required bool CanRestartGameServers { get; set; }
     public required bool CanShutdownGameServers { get; set; }
+    public required bool Timer { get; set; }
 }
